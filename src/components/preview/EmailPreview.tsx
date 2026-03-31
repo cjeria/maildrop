@@ -1,0 +1,187 @@
+import { useMemo, useState } from 'react'
+import { useCampaignStore } from '../../store/campaignStore'
+import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
+
+const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
+
+
+export function EmailPreview() {
+  const store = useCampaignStore()
+  const [copied, setCopied] = useState(false)
+
+  const deps = [
+    store.recipientName, store.link, store.selectedAddress,
+    store.headerImage, store.body, store.signature, store.footerImage,
+    store.people, store.template, store.font, store.fontSize, store.cornerRadius,
+    store.backgroundColor, store.cardColor, store.borderEnabled, store.borderColor, store.linkColor,
+  ]
+
+  const previewHtml = useMemo(() => generateEmailHtml(store, { isPreview: true }), deps)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const emailHtml = useMemo(() => generateEmailHtml(store), deps)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([emailHtml], { type: 'text/html' }),
+        'text/plain': new Blob([emailHtml], { type: 'text/plain' }),
+      }),
+    ])
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = () => {
+    const plain = generatePlainText(store)
+    const content = `${emailHtml}\n\n<!-- PLAIN TEXT VERSION:\n${plain}\n-->`
+    const blob = new Blob([content], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${store.campaignName.replace(/\s+/g, '-').toLowerCase()}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header label */}
+      <div className="flex items-center justify-between px-4 border-b border-gray-200 shrink-0 bg-white h-11">
+        <span className="text-sm font-medium text-gray-500">Email Preview</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+            </svg>
+            {copied ? 'Copied!' : 'Copy to clipboard'}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download
+          </button>
+        </div>
+      </div>
+
+      {/* Controls bar */}
+      <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-gray-200 shrink-0 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-gray-500">Template</label>
+          <select
+            className="text-xs border border-gray-300 rounded px-1.5 py-1 cursor-pointer hover:border-gray-400 transition-colors"
+            value={store.template}
+            onChange={(e) => store.setTemplate(e.target.value as typeof store.template)}
+          >
+            {TEMPLATES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 hover:border-gray-400 transition-colors" title="Corner radius">
+          <div className="flex items-center justify-center px-1.5 text-gray-400">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 12 L2 5 Q2 2 5 2 L12 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+            </svg>
+          </div>
+          <input
+            type="number"
+            min="0"
+            max="40"
+            value={store.cornerRadius}
+            onChange={(e) => store.setCornerRadius(Math.max(0, Math.min(40, Number(e.target.value))))}
+            className="w-10 py-1 pr-1.5 text-xs text-gray-700 bg-transparent focus:outline-none cursor-text"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5" title="Link color">
+          <label className="text-xs text-gray-500">Links</label>
+          <input
+            type="color"
+            value={store.linkColor}
+            onChange={(e) => store.setLinkColor(e.target.value)}
+            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5" title="Page background color">
+          <label className="text-xs text-gray-500">Page</label>
+          <input
+            type="color"
+            value={store.backgroundColor}
+            onChange={(e) => store.setBackgroundColor(e.target.value)}
+            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5" title="Email card background color">
+          <label className="text-xs text-gray-500">Card</label>
+          <input
+            type="color"
+            value={store.cardColor}
+            onChange={(e) => store.setCardColor(e.target.value)}
+            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-gray-500">Border</label>
+          <button
+            type="button"
+            onClick={() => store.setBorderEnabled(!store.borderEnabled)}
+            className={`w-8 h-4 rounded-full transition-colors ${store.borderEnabled ? 'bg-gray-900' : 'bg-gray-300'}`}
+          >
+            <span className={`block w-3 h-3 rounded-full bg-white shadow transition-transform mx-0.5 ${store.borderEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+          </button>
+          {store.borderEnabled && (
+            <input
+              type="color"
+              value={store.borderColor}
+              onChange={(e) => store.setBorderColor(e.target.value)}
+              className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
+            />
+          )}
+        </div>
+
+        <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => {
+            store.setTemplate('Normal')
+            store.setCornerRadius(0)
+            store.setBackgroundColor('#f3f4f6')
+            store.setCardColor('#ffffff')
+            store.setBorderEnabled(true)
+            store.setBorderColor('#e5e7eb')
+            store.setLinkColor('#c45e1a')
+          }}
+          className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Preview area */}
+      <div className="flex-1 overflow-auto bg-gray-100 p-4">
+        <iframe
+          srcDoc={previewHtml}
+          title="Email Preview"
+          sandbox="allow-same-origin"
+          className="w-full h-full min-h-[600px] bg-white"
+          style={{ border: 'none' }}
+        />
+      </div>
+    </div>
+  )
+}

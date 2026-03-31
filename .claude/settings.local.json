@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /workspace && ss -tlnp 2>/dev/null | grep LISTEN || netstat -tlnp 2>/dev/null | grep LISTEN)",
+      "Bash(npm run dev -- --port 5173 --host)",
+      "Bash(npm install @emailjs/browser 2>&1 | tail -5)",
+      "Bash(npx tsc --noEmit 2>&1)",
+      "Bash(npm uninstall @emailjs/browser 2>&1 | tail -3)",
+      "Bash(claude mcp:*)",
+      "Bash(curl -s http://127.0.0.1:3845/sse --max-time 3)",
+      "Bash(npx --yes figma-dev-mode-mcp-server --version)",
+      "Bash(npx --yes @figma/mcp-server --version)",
+      "Bash(npm search:*)",
+      "Bash(ip route:*)",
+      "Bash(curl -s http://172.17.0.1:3845/sse --max-time 3)",
+      "Bash(curl -v http://172.17.0.1:3845/sse --max-time 3)",
+      "Bash(npm run:*)",
+      "Bash(git -C /workspace status)",
+      "Bash(gh auth:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
