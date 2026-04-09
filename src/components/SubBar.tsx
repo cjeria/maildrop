@@ -129,7 +129,7 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-200 shrink-0">
+      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-300 shrink-0">
         {/* Campaign title dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -143,7 +143,7 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
           </button>
 
           {dropdownOpen && (
-            <div className="absolute left-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+            <div className="absolute left-0 top-full mt-1 w-72 bg-white border border-gray-300 rounded-lg shadow-lg z-50 py-1">
               {slots.slots.length > 0 && (
                 <>
                   {slots.slots.map((slot) => (
@@ -222,7 +222,7 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
         <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500 whitespace-nowrap">Name</label>
           <input
-            className="border border-gray-300 rounded px-2 py-1 text-sm w-36"
+            className="border border-gray-400 rounded px-2 py-1 text-sm w-36"
             placeholder="Recipient name"
             value={store.recipientName}
             onChange={(e) => store.setRecipientName(e.target.value)}
@@ -231,7 +231,7 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
         <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500">Link</label>
           <input
-            className="border border-gray-300 rounded px-2 py-1 text-sm w-48"
+            className="border border-gray-400 rounded px-2 py-1 text-sm w-48"
             placeholder="https://..."
             value={store.link}
             onChange={(e) => store.setLink(e.target.value)}
@@ -254,12 +254,12 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
                 if (e.key === 'Enter') handleCreateNewCampaign()
                 if (e.key === 'Escape') setNewCampaignModal(false)
               }}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
+              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setNewCampaignModal(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -289,12 +289,12 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
                 if (e.key === 'Enter') handleConfirmRename()
                 if (e.key === 'Escape') { setRenameId(null); setRenameName('') }
               }}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
+              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setRenameId(null); setRenameName('') }}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -324,12 +324,12 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
                 if (e.key === 'Enter') handleConfirmDuplicate()
                 if (e.key === 'Escape') { setDuplicateSourceId(null); setDuplicateName('') }
               }}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
+              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setDuplicateSourceId(null); setDuplicateName('') }}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -356,7 +356,7 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>

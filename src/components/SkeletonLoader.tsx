@@ -6,9 +6,9 @@ export function SkeletonLoader() {
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Left panel skeleton */}
-      <div className="flex flex-col w-[483px] shrink-0 border-r border-gray-200 bg-white overflow-hidden">
+      <div className="flex flex-col w-[483px] shrink-0 border-r border-gray-300 bg-white overflow-hidden">
         {/* Tab bar */}
-        <div className="flex items-center gap-4 px-4 border-b border-gray-200 h-11 shrink-0">
+        <div className="flex items-center gap-4 px-4 border-b border-gray-300 h-11 shrink-0">
           <Bar w="w-28" h="h-3" />
         </div>
         {/* Builder rows */}
@@ -29,11 +29,11 @@ export function SkeletonLoader() {
       {/* Right panel skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header label */}
-        <div className="flex items-center px-4 border-b border-gray-200 bg-white h-11 shrink-0">
+        <div className="flex items-center px-4 border-b border-gray-300 bg-white h-11 shrink-0">
           <Bar w="w-24" h="h-3" />
         </div>
         {/* Controls bar */}
-        <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-gray-300 shrink-0">
           <Bar w="w-20" h="h-6" />
           <Bar w="w-20" h="h-6" />
           <Bar w="w-10" h="h-6" />

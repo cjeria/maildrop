@@ -314,14 +314,14 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
         </div>
       )}
 
-      <div className="border border-gray-300 rounded-md overflow-hidden">
+      <div className="border border-gray-400 rounded-md overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center gap-0.5 px-2 py-1 bg-gray-50 border-b border-gray-200 flex-wrap">
+        <div className="flex items-center gap-0.5 px-2 py-1 bg-gray-50 border-b border-gray-400 flex-wrap">
           {onFontChange && font && (
             <select
               value={font}
               onChange={(e) => onFontChange(e.target.value)}
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white cursor-pointer hover:border-gray-400 transition-colors"
+              className="text-xs border border-gray-400 rounded px-1 py-0.5 bg-white cursor-pointer hover:border-gray-400 transition-colors"
             >
               {FONT_FAMILIES.map((f) => (
                 <option key={f} value={f}>{f}</option>
@@ -333,7 +333,7 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
             <select
               value={fontSize}
               onChange={(e) => onFontSizeChange(e.target.value as 'small' | 'normal' | 'large' | 'huge')}
-              className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white cursor-pointer hover:border-gray-400 transition-colors"
+              className="text-xs border border-gray-400 rounded px-1 py-0.5 bg-white cursor-pointer hover:border-gray-400 transition-colors"
             >
               {FONT_SIZES.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -353,6 +353,22 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
           </ToolbarButton>
           <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
             <span className="underline">U</span>
+          </ToolbarButton>
+
+          <div className="w-px h-4 bg-gray-200 mx-0.5" />
+
+          <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="9" y1="6" x2="20" y2="6" /><line x1="9" y1="12" x2="20" y2="12" /><line x1="9" y1="18" x2="20" y2="18" />
+              <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
+              <path d="M4 6h1v4" stroke="currentColor" strokeWidth="1.5" /><path d="M4 10h2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M6 14H4c0-1 2-2 2-3s-1-1.5-2-1" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
           </ToolbarButton>
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />

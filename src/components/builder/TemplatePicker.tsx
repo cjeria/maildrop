@@ -18,7 +18,7 @@ export function TemplatePicker({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-xl w-[480px] max-w-full mx-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-300">
           <h2 className="text-sm font-semibold text-gray-900">Load template</h2>
           <button
             onClick={onClose}
@@ -36,7 +36,7 @@ export function TemplatePicker({ onClose }: Props) {
               key={t.name}
               type="button"
               onClick={() => handleLoad(i)}
-              className="text-left p-3 border border-gray-200 rounded-md hover:border-gray-400 hover:bg-gray-50 transition-colors cursor-pointer"
+              className="text-left p-3 border border-gray-300 rounded-md hover:border-gray-400 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <p className="text-sm font-medium text-gray-900 mb-0.5">{t.name}</p>
               <p className="text-xs text-gray-500">{t.description}</p>

@@ -1,86 +1,49 @@
-import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { BuilderSection } from './BuilderSection'
 import { RichTextEditor } from './RichTextEditor'
-import { ImageUpload } from './ImageUpload'
-import { PeopleSection } from './PeopleSection'
-import { TemplatePicker } from './TemplatePicker'
+import { BodySections, AddSectionButton } from './BodySections'
+import { HeaderEditor } from './HeaderEditor'
+import { FooterEditor } from './FooterEditor'
 
 export function CampaignBuilder() {
   const store = useCampaignStore()
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const focus = (id: typeof store.focusedSection) => () => store.setFocusedSection(id)
 
   return (
-    <div className="space-y-3 p-3">
-      {/* Load template button — hidden, reserved for future use */}
+    <div className="space-y-5 p-4">
+      <div onFocus={focus('header')}>
+        <BuilderSection
+          title="Header"
+          enabled={store.headerImage.enabled}
+          onToggle={store.setHeaderImageEnabled}
+        >
+          <HeaderEditor />
+        </BuilderSection>
+      </div>
 
-      {/* Header Image */}
-      <BuilderSection
-        title="Header Image"
-        enabled={store.headerImage.enabled}
-        onToggle={store.setHeaderImageEnabled}
-      >
-        <ImageUpload
-          imageUrl={store.headerImage.imageUrl}
-          onChange={store.setHeaderImageUrl}
-          label="header image"
-        />
-      </BuilderSection>
-
-      {/* Body */}
-      <BuilderSection title="Body">
-        <RichTextEditor
-          content={store.body.content}
-          onChange={store.setBodyContent}
-          font={store.font}
-          onFontChange={store.setFont}
-          fontSize={store.fontSize}
-          onFontSizeChange={store.setFontSize}
-        />
-      </BuilderSection>
-
-      {/* Signature */}
-      <BuilderSection
-        title="Signature"
-        enabled={store.signature.enabled}
-        onToggle={store.setSignatureEnabled}
-      >
-        <div className="space-y-3">
+      <div onFocus={focus('body')}>
+        <BuilderSection title="Body" headerActions={<AddSectionButton />}>
           <RichTextEditor
-            content={store.signature.content}
-            onChange={store.setSignatureContent}
+            content={store.body.content}
+            onChange={store.setBodyContent}
             font={store.font}
             onFontChange={store.setFont}
             fontSize={store.fontSize}
             onFontSizeChange={store.setFontSize}
           />
-          <ImageUpload
-            imageUrl={store.signature.imageUrl}
-            onChange={store.setSignatureImage}
-            label="signature image"
-          />
-        </div>
-      </BuilderSection>
+          <BodySections />
+        </BuilderSection>
+      </div>
 
-      {/* People */}
-      <PeopleSection />
-
-      {/* Footer Image */}
-      <BuilderSection
-        title="Footer Image"
-        enabled={store.footerImage.enabled}
-        onToggle={store.setFooterImageEnabled}
-      >
-        <ImageUpload
-          imageUrl={store.footerImage.imageUrl}
-          onChange={store.setFooterImageUrl}
-          label="footer image"
-        />
-      </BuilderSection>
-
-      {showTemplatePicker && (
-        <TemplatePicker onClose={() => setShowTemplatePicker(false)} />
-      )}
+      <div onFocus={focus('footer')}>
+        <BuilderSection
+          title="Footer"
+          enabled={store.footerConfig.enabled}
+          onToggle={store.setFooterEnabled}
+        >
+          <FooterEditor />
+        </BuilderSection>
+      </div>
     </div>
   )
 }

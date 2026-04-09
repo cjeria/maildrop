@@ -20,8 +20,8 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
     try {
       const url = await uploadToCloudinary(file)
       onChange(url)
-    } catch {
-      setError('Upload failed. Check your Cloudinary config.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed. Check your Cloudinary config.')
     } finally {
       setUploading(false)
     }
@@ -41,11 +41,11 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
           <img
             src={imageUrl}
             alt="Uploaded"
-            className="max-h-32 rounded border border-gray-200 object-contain"
+            className="max-h-32 rounded border border-gray-300 object-contain"
           />
           <button
             onClick={() => onChange('')}
-            className="absolute top-1 right-1 bg-white border border-gray-300 rounded p-0.5 text-gray-500 cursor-pointer hover:text-red-500 hover:border-red-300 opacity-0 group-hover:opacity-100 transition-all"
+            className="absolute top-1 right-1 bg-white border border-gray-400 rounded p-0.5 text-gray-500 cursor-pointer hover:text-red-500 hover:border-red-300 opacity-0 group-hover:opacity-100 transition-all"
             title="Remove image"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -62,10 +62,10 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
           onClick={() => !uploading && inputRef.current?.click()}
           className={`border-2 border-dashed rounded-md p-4 text-center transition-colors ${
             uploading
-              ? 'border-gray-200 bg-gray-50 cursor-wait'
+              ? 'border-gray-300 bg-gray-50 cursor-wait'
               : dragging
               ? 'border-gray-400 bg-gray-50 cursor-pointer'
-              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
+              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 cursor-pointer'
           }`}
         >
           {uploading ? (

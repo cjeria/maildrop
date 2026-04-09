@@ -11,6 +11,7 @@ interface Props {
   onSaveDraft?: (name: string) => void
   onSwitchDraft?: (id: string) => void
   onDeleteDraft?: (id: string) => void
+  headerActions?: React.ReactNode
 }
 
 export function BuilderSection({
@@ -23,6 +24,7 @@ export function BuilderSection({
   onSaveDraft,
   onSwitchDraft,
   onDeleteDraft,
+  headerActions,
 }: Props) {
   const [savingDraft, setSavingDraft] = useState(false)
   const [draftName, setDraftName] = useState('')
@@ -30,14 +32,14 @@ export function BuilderSection({
   const hasToggle = onToggle !== undefined
 
   return (
-    <div className="border border-gray-200 rounded-md overflow-hidden">
+    <div className="border border-gray-400 rounded-md overflow-hidden">
       {/* Section header */}
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
+      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-400">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-1 text-sm font-semibold text-gray-900 cursor-pointer hover:text-gray-600 transition-colors"
+            className="flex items-center gap-1 font-semibold text-gray-900 cursor-pointer hover:text-gray-600 transition-colors text-[20px]"
           >
             {title}
             <svg
@@ -69,6 +71,11 @@ export function BuilderSection({
           )}
         </div>
 
+        {/* Header actions slot */}
+        {headerActions && !collapsed && (
+          <div className="flex items-center">{headerActions}</div>
+        )}
+
         {/* Drafts controls */}
         {drafts !== undefined && !collapsed && (
           <div className="flex items-center gap-1">
@@ -76,7 +83,7 @@ export function BuilderSection({
               <select
                 value={activeDraftId ?? ''}
                 onChange={(e) => e.target.value && onSwitchDraft?.(e.target.value)}
-                className="text-xs border border-gray-300 rounded px-1.5 py-0.5 max-w-[120px] cursor-pointer hover:border-gray-400 transition-colors"
+                className="text-xs border border-gray-400 rounded px-1.5 py-0.5 max-w-[120px] cursor-pointer hover:border-gray-400 transition-colors"
               >
                 <option value="">Drafts</option>
                 {drafts.map((d) => (
@@ -101,7 +108,7 @@ export function BuilderSection({
               <div className="flex items-center gap-1">
                 <input
                   autoFocus
-                  className="text-xs border border-gray-300 rounded px-1.5 py-0.5 w-24 cursor-text"
+                  className="text-xs border border-gray-400 rounded px-1.5 py-0.5 w-24 cursor-text"
                   placeholder="Draft name"
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
@@ -132,7 +139,7 @@ export function BuilderSection({
               <button
                 type="button"
                 onClick={() => setSavingDraft(true)}
-                className="text-xs px-1.5 py-0.5 border border-gray-300 rounded text-gray-600 cursor-pointer hover:bg-gray-100 hover:border-gray-400 transition-colors"
+                className="text-xs px-1.5 py-0.5 border border-gray-400 rounded text-gray-600 cursor-pointer hover:bg-gray-100 hover:border-gray-400 transition-colors"
                 title="Save draft"
               >
                 + Save
@@ -144,7 +151,7 @@ export function BuilderSection({
 
       {/* Content */}
       {!collapsed && (
-        <div className={`p-3 ${hasToggle && !enabled ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`p-4 ${hasToggle && !enabled ? 'opacity-50 pointer-events-none' : ''}`}>
           {children}
         </div>
       )}

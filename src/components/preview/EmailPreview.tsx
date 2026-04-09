@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
 
@@ -8,17 +8,40 @@ const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 export function EmailPreview() {
   const store = useCampaignStore()
   const [copied, setCopied] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const focusedSection = store.focusedSection
 
   const deps = [
     store.recipientName, store.link, store.selectedAddress,
-    store.headerImage, store.body, store.signature, store.footerImage,
-    store.people, store.template, store.font, store.fontSize, store.cornerRadius,
+    store.headerImage, store.headerSectionOrder, store.headerConfig, store.body, store.bodySections, store.footerConfig,
+    store.template, store.font, store.fontSize, store.cornerRadius,
     store.backgroundColor, store.cardColor, store.borderEnabled, store.borderColor, store.linkColor,
   ]
 
   const previewHtml = useMemo(() => generateEmailHtml(store, { isPreview: true }), deps)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const emailHtml = useMemo(() => generateEmailHtml(store), deps)
+
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const win = iframe.contentWindow
+    const doc = iframe.contentDocument
+    if (!doc) return
+    const scrollX = win?.scrollX ?? 0
+    const scrollY = win?.scrollY ?? 0
+    doc.open()
+    doc.write(previewHtml)
+    doc.close()
+    win?.scrollTo(scrollX, scrollY)
+  }, [previewHtml])
+
+  useEffect(() => {
+    if (!focusedSection) return
+    const doc = iframeRef.current?.contentDocument
+    if (!doc) return
+    doc.getElementById(`preview-${focusedSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [focusedSection])
 
   const handleCopy = async () => {
     await navigator.clipboard.write([
@@ -46,7 +69,7 @@ export function EmailPreview() {
   return (
     <div className="flex flex-col h-full">
       {/* Header label */}
-      <div className="flex items-center justify-between px-4 border-b border-gray-200 shrink-0 bg-white h-11">
+      <div className="flex items-center justify-between px-4 border-b border-gray-300 shrink-0 bg-white h-11">
         <span className="text-sm font-medium text-gray-500">Email Preview</span>
         <div className="flex items-center gap-2">
           <button
@@ -74,7 +97,7 @@ export function EmailPreview() {
       </div>
 
       {/* Controls bar */}
-      <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-gray-200 shrink-0 flex-wrap">
+      <div className="flex items-center gap-3 px-3 py-2 bg-white border-b border-gray-300 shrink-0 flex-wrap">
         <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500">Template</label>
           <select
@@ -175,7 +198,7 @@ export function EmailPreview() {
       {/* Preview area */}
       <div className="flex-1 overflow-auto bg-gray-100 p-4">
         <iframe
-          srcDoc={previewHtml}
+          ref={iframeRef}
           title="Email Preview"
           sandbox="allow-same-origin"
           className="w-full h-full min-h-[600px] bg-white"

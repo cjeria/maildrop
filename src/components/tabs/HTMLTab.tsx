@@ -12,7 +12,7 @@ export function HTMLTab() {
       <textarea
         readOnly
         value={html}
-        className="flex-1 w-full font-mono text-xs border border-gray-300 rounded-md p-3 bg-gray-50 resize-none focus:outline-none"
+        className="flex-1 w-full font-mono text-xs border border-gray-400 rounded-md p-3 bg-gray-50 resize-y focus:outline-none"
       />
     </div>
   )
