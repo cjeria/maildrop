@@ -370,7 +370,7 @@ ${rows}        </table>
 }
 
 export function generatePlainText(state: StoreState): string {
-  const { recipientName, link, selectedAddress, body, signature } = state
+  const { recipientName, link, selectedAddress, body } = state
   const resolve = (html: string) => resolveVars(html, recipientName, link, selectedAddress)
 
   function stripHtml(html: string): string {
@@ -419,7 +419,7 @@ export function checkSpam(state: StoreState): SpamCheckResult {
 
   // Image-heavy with little body text
   const hasImages = (state.headerImage.enabled && !!state.headerImage.imageUrl) ||
-    (state.footerImage.enabled && !!state.footerImage.imageUrl)
+    (state.footerConfig.enabled && !!state.footerConfig.logo.imageUrl)
   const bodyText = plainText.replace(/\s/g, '')
   if (hasImages && bodyText.length < 60) {
     signals.push('Image-heavy with little text. High image-to-text ratio increases spam likelihood.')

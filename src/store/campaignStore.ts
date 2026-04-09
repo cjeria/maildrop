@@ -265,11 +265,6 @@ export type PersistedState = Pick<
 const DEFAULT_BODY_CONTENT =
   '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>'
 
-const defaultSection = (): Section => ({
-  content: '',
-  drafts: [],
-  activeDraftId: null,
-})
 
 export const defaultState: PersistedState = {
   campaignName: 'Untitled Campaign',
@@ -319,7 +314,7 @@ function migrateSections(raw: unknown[]): ContentSection[] {
         ...section,
       } as PeopleBodySection
     }
-    return section as ContentSection
+    return section as unknown as ContentSection
   })
 }
 
@@ -344,7 +339,7 @@ function loadPersistedState(): Partial<PersistedState> {
     // Migration: deep-merge headerConfig
     if (parsed.headerConfig) {
       const d = defaultState.headerConfig
-      const saved = parsed.headerConfig as Record<string, unknown>
+      const saved = parsed.headerConfig as unknown as Record<string, unknown>
       parsed.headerConfig = {
         ...d, ...parsed.headerConfig,
         alignment: (parsed.headerConfig.alignment ?? (saved.logo as Record<string, unknown>)?.alignment ?? d.alignment) as 'left' | 'center' | 'right',

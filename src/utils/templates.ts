@@ -1,4 +1,5 @@
 import type { PersistedState } from '../store/campaignStore'
+import { defaultState, DEFAULT_FOOTER_CONFIG, DEFAULT_HEADER_SECTION_ORDER } from '../store/campaignStore'
 
 interface TemplatePreset {
   name: string
@@ -13,10 +14,11 @@ const base = (): PersistedState => ({
   addresses: [],
   selectedAddress: '',
   headerImage: { enabled: false, imageUrl: '' },
+  headerSectionOrder: [...DEFAULT_HEADER_SECTION_ORDER],
+  headerConfig: { ...defaultState.headerConfig },
   body: { content: '', drafts: [], activeDraftId: null },
-  signature: { content: '', drafts: [], activeDraftId: null, enabled: true, imageUrl: '' },
-  footerImage: { enabled: false, imageUrl: '' },
-  people: { enabled: false, layout: 'vertical', cards: [] },
+  bodySections: [],
+  footerConfig: { ...DEFAULT_FOOTER_CONFIG },
   template: 'Normal',
   font: 'Arial',
   fontSize: 'normal',

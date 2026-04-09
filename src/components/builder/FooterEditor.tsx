@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { ImageUpload } from './ImageUpload'
-import type { FooterConfig, SocialPlatform } from '../../store/campaignStore'
+import type { SocialPlatform } from '../../store/campaignStore'
 
 type Alignment = 'left' | 'center' | 'right'
 
