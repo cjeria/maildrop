@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
+import { warmIconCache } from '../../utils/socialIconUploader'
+import type { SocialPlatform } from '../../store/campaignStore'
 
 const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 
@@ -8,8 +10,22 @@ const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 export function EmailPreview() {
   const store = useCampaignStore()
   const [copied, setCopied] = useState(false)
+  const [iconCacheVersion, setIconCacheVersion] = useState(0)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const focusedSection = store.focusedSection
+
+  // Upload social icons to Cloudinary so they render in Gmail
+  const { links, color, size } = store.footerConfig.socialIcons
+  useEffect(() => {
+    const activePlatforms = links
+      .filter((l) => l.enabled && l.url.trim())
+      .map((l) => l.platform as SocialPlatform)
+    if (activePlatforms.length === 0) return
+    const sizePx = size === 'small' ? 18 : size === 'large' ? 30 : 24
+    warmIconCache(activePlatforms, color, sizePx).then(() => {
+      setIconCacheVersion((v) => v + 1)
+    })
+  }, [links, color, size])
 
   const deps = [
     store.recipientName, store.link, store.selectedAddress,
@@ -18,9 +34,10 @@ export function EmailPreview() {
     store.backgroundColor, store.cardColor, store.borderEnabled, store.borderColor, store.linkColor,
   ]
 
-  const previewHtml = useMemo(() => generateEmailHtml(store, { isPreview: true }), deps)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const emailHtml = useMemo(() => generateEmailHtml(store), deps)
+  const previewHtml = useMemo(() => generateEmailHtml(store, { isPreview: true }), [...deps, iconCacheVersion])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const emailHtml = useMemo(() => generateEmailHtml(store), [...deps, iconCacheVersion])
 
   useEffect(() => {
     const iframe = iframeRef.current
