@@ -150,6 +150,25 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   const resolve = (html: string) => resolveVars(html, recipientName, link, selectedAddress)
   const sectionStyle = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; line-height: 1.6; color: #1f2937; padding: 24px 24px;`
 
+  // Returns true if an HTML string (possibly from TipTap) has visible text content
+  const hasVisibleContent = (html: string): boolean =>
+    html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim().length > 0
+
+  // Applies the same rendering pipeline used for body content to any TipTap HTML
+  const processTiptapHtml = (html: string, width: number): string =>
+    preserveSpaces(processInlineImages(resolve(html), width).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))
+
+  // Renders a section title (HTML or plain text) into a <tr> row, or '' if empty
+  const renderSectionTitleRow = (title: string, border: string, bg: string): string => {
+    if (!title) return ''
+    const isHtml = /<[a-z][\s\S]*>/i.test(title)
+    if (isHtml && !hasVisibleContent(title)) return ''
+    const inner = isHtml
+      ? `<div style="font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280; line-height: 1.3;">${processTiptapHtml(title, contentWidth)}</div>`
+      : `<p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(title)}</p>`
+    return `<tr><td style="padding: 18px 24px 0; ${border} ${bg}">${inner}</td></tr>\n`
+  }
+
   // Per-section renderers — each receives whether it is the first visible row
   const renderHeader = (topBorder: string): string => {
     if (!headerImage.enabled) return ''
@@ -217,12 +236,10 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         if (ps.cards.length === 0 && isPreview) {
           const dummy: PersonCard = { id: '__placeholder__', name: 'Jane Smith', title: 'Senior Account Executive', location: 'New York, NY', phone: '+1 (212) 555-0182', email: 'jane.smith@example.com', bioHref: 'https://example.com/bio/jane-smith', imageUrl: 'https://placehold.co/120x120/e5e7eb/9ca3af?text=Photo' }
           const dummyCellPx = Math.floor(maxWidthNum / 4)
-          out += `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${ps.title ? escapeHtml(ps.title) : 'People'}</p></td></tr>\n`
+          out += renderSectionTitleRow(ps.title || 'People', sectionBorder, bgStyle) || `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">People</p></td></tr>\n`
           out += `<tr><td style="padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
         } else if (ps.cards.length > 0) {
-          const titleRow = ps.title
-            ? `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(ps.title)}</p></td></tr>\n`
-            : ''
+          const titleRow = renderSectionTitleRow(ps.title, sectionBorder, bgStyle)
           const rowBorder = titleRow ? '' : sectionBorder
           out += titleRow
           out += `<tr><td style="padding: 0; ${rowBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
@@ -232,15 +249,20 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         const colCount = cs.columns.length
         const gap = 16
         const colWidth = Math.floor((contentWidth - gap * (colCount - 1)) / colCount)
-        const titleRow = cs.title
-          ? `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(cs.title)}</p></td></tr>\n`
-          : ''
+        const titleRow = renderSectionTitleRow(cs.title, sectionBorder, bgStyle)
         const cells = cs.columns.map((col, i) => {
           const paddingLeft = i === 0 ? 24 : gap / 2
           const paddingRight = i === colCount - 1 ? 24 : gap / 2
           let content = ''
           if (col.imageUrl) content += `<img src="${escapeHtml(col.imageUrl)}" width="${colWidth}" height="200" alt="" style="display: block; width: ${colWidth}px; height: 200px; object-fit: cover; margin-bottom: 24px;" />`
-          if (col.title) content += `<p style="margin: 0 0 12px; font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3;">${escapeHtml(col.title)}</p>`
+          if (col.title) {
+            const isTitleHtml = /<[a-z][\s\S]*>/i.test(col.title)
+            if (isTitleHtml ? hasVisibleContent(col.title) : col.title.trim()) {
+              content += isTitleHtml
+                ? `<div style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth)}</div>`
+                : `<p style="margin: 0 0 12px; font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3;">${escapeHtml(col.title)}</p>`
+            }
+          }
           if (col.subtext) {
             const isHtml = /<[a-z][\s\S]*>/i.test(col.subtext)
             content += isHtml

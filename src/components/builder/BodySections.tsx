@@ -120,12 +120,9 @@ function ColumnEditor({
         onChange={(url) => update({ imageUrl: url })}
         label="column image"
       />
-      <input
-        type="text"
-        value={column.title}
-        onChange={(e) => update({ title: e.target.value })}
-        placeholder="Title"
-        className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+      <RichTextEditor
+        content={column.title}
+        onChange={(html) => update({ title: html })}
       />
       <RichTextEditor
         content={column.subtext}
@@ -407,12 +404,9 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
 
       {!collapsed && (
         <div className="p-4 space-y-5">
-          <input
-            type="text"
-            value={section.title}
-            onChange={(e) => store.updateBodySectionTitle(section.id, e.target.value)}
-            placeholder="Section title (optional)"
-            className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+          <RichTextEditor
+            content={section.title}
+            onChange={(html) => store.updateBodySectionTitle(section.id, html)}
           />
 
           {isColumnSection(section)
