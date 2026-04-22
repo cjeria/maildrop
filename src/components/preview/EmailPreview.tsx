@@ -1,11 +1,42 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
+import type { FocusedSectionId } from '../../store/campaignStore'
 import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
 import { warmIconCache } from '../../utils/socialIconUploader'
 import type { SocialPlatform } from '../../store/campaignStore'
 
 const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 
+const HIGHLIGHT_SHADOW = '0 0 0 2px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.35)'
+
+function applyPreviewHighlight(doc: Document, id: FocusedSectionId | null) {
+  doc.querySelectorAll('[data-section-id]').forEach((el) => {
+    (el as HTMLElement).style.boxShadow = ''
+    ;(el as HTMLElement).style.cursor = ''
+  })
+  if (!id) return
+  const el = doc.querySelector(`[data-section-id="${id}"]`) as HTMLElement | null
+  if (el) {
+    el.style.boxShadow = HIGHLIGHT_SHADOW
+    el.style.cursor = 'pointer'
+  }
+}
+
+function attachPreviewClickListener(
+  iframe: HTMLIFrameElement,
+  cb: (id: FocusedSectionId | null) => void
+) {
+  const doc = iframe.contentDocument
+  if (!doc) return
+  const prev = (iframe as any).__sectionClickListener
+  if (prev) doc.removeEventListener('click', prev)
+  const handler = (e: Event) => {
+    const el = (e.target as HTMLElement).closest('[data-section-id]') as HTMLElement | null
+    cb(el ? (el.dataset.sectionId as FocusedSectionId) : null)
+  }
+  doc.addEventListener('click', handler)
+  ;(iframe as any).__sectionClickListener = handler
+}
 
 export function EmailPreview() {
   const store = useCampaignStore()
@@ -39,6 +70,7 @@ export function EmailPreview() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const emailHtml = useMemo(() => generateEmailHtml(store), [...deps, iconCacheVersion])
 
+  // Write HTML to iframe, then re-apply highlight and re-attach click listener
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
@@ -51,14 +83,45 @@ export function EmailPreview() {
     doc.write(previewHtml)
     doc.close()
     win?.scrollTo(scrollX, scrollY)
+    applyPreviewHighlight(doc, focusedSection)
+    attachPreviewClickListener(iframe, store.setFocusedSection)
+  // focusedSection intentionally excluded — the separate effect handles highlight-only updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewHtml])
 
+  // When focused section changes, update highlight in preview, scroll preview to anchor,
+  // and scroll the builder panel to the corresponding builder section
   useEffect(() => {
-    if (!focusedSection) return
-    const doc = iframeRef.current?.contentDocument
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const doc = iframe.contentDocument
     if (!doc) return
-    doc.getElementById(`preview-${focusedSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    // Highlight in preview
+    applyPreviewHighlight(doc, focusedSection)
+
+    // Scroll preview to anchor
+    if (focusedSection) {
+      doc.getElementById(`preview-${focusedSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    // Scroll builder panel to the focused section
+    if (focusedSection) {
+      const builderEl = document.querySelector(`[data-section-id="${focusedSection}"]`) as HTMLElement | null
+      builderEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
   }, [focusedSection])
+
+  // Cleanup click listener on unmount
+  useEffect(() => {
+    return () => {
+      const iframe = iframeRef.current
+      if (!iframe) return
+      const doc = iframe.contentDocument
+      const prev = (iframe as any).__sectionClickListener
+      if (doc && prev) doc.removeEventListener('click', prev)
+    }
+  }, [])
 
   const handleCopy = async () => {
     await navigator.clipboard.write([

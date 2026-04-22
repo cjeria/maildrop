@@ -213,7 +213,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         inner += `<tr><td align="${align}" style="padding-bottom:${pb};"><span style="${pillCss}">${escapeHtml(hc.datePill.text)}</span></td></tr>\n`
       }
     }
-    return `<tr><td style="background-color:${hc.backgroundColor};padding:42px 24px;${topBorder}"><table width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td></tr>\n`
+    return `<tr><td${isPreview ? ' data-section-id="header"' : ''} style="background-color:${hc.backgroundColor};padding:42px 24px;${topBorder}"><table width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td></tr>\n`
   }
 
   const renderBody = (topBorder: string): string => {
@@ -222,7 +222,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       const bodyHtml = preserveSpaces(
         processInlineImages(resolve(body.content), contentWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>')
       )
-      out += `<tr><td style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
+      out += `<tr><td${isPreview ? ' data-section-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
       topBorder = ''
     }
 
@@ -231,18 +231,21 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       const bgStyle = `background-color: ${bg};`
       const sectionBorder = topBorder || `border-top: ${divider};`
 
+      // Buffer this section's rows so we can optionally wrap in <tbody data-section-id> for preview
+      let sectionRows = ''
+
       if (section.type === 'people') {
         const ps = section as PeopleBodySection
         if (ps.cards.length === 0 && isPreview) {
           const dummy: PersonCard = { id: '__placeholder__', name: 'Jane Smith', title: 'Senior Account Executive', location: 'New York, NY', phone: '+1 (212) 555-0182', email: 'jane.smith@example.com', bioHref: 'https://example.com/bio/jane-smith', imageUrl: 'https://placehold.co/120x120/e5e7eb/9ca3af?text=Photo' }
           const dummyCellPx = Math.floor(maxWidthNum / 4)
-          out += renderSectionTitleRow(ps.title || 'People', sectionBorder, bgStyle) || `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">People</p></td></tr>\n`
-          out += `<tr><td style="padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
+          sectionRows += renderSectionTitleRow(ps.title || 'People', sectionBorder, bgStyle) || `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">People</p></td></tr>\n`
+          sectionRows += `<tr><td style="padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
         } else if (ps.cards.length > 0) {
           const titleRow = renderSectionTitleRow(ps.title, sectionBorder, bgStyle)
           const rowBorder = titleRow ? '' : sectionBorder
-          out += titleRow
-          out += `<tr><td style="padding: 0; ${rowBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
+          sectionRows += titleRow
+          sectionRows += `<tr><td style="padding: 0; ${rowBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
         }
       } else {
         const cs = section as ColumnSection
@@ -272,8 +275,19 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
           return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content || '&nbsp;'}</td>`
         }).join('')
         const rowBorder = titleRow ? '' : sectionBorder
-        out += titleRow
-        out += `<tr><td style="${rowBorder} padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr>${cells}</tr></table></td></tr>\n`
+        sectionRows += titleRow
+        sectionRows += `<tr><td style="${rowBorder} padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr>${cells}</tr></table></td></tr>\n`
+      }
+
+      if (sectionRows) {
+        if (isPreview) {
+          out += `<tbody data-section-id="body-${section.id}">`
+          out += `<tr><td id="preview-body-${section.id}" style="padding:0;font-size:0;line-height:0;height:0;"></td></tr>\n`
+          out += sectionRows
+          out += `</tbody>\n`
+        } else {
+          out += sectionRows
+        }
       }
 
       topBorder = ''
@@ -337,7 +351,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         `</td></tr>\n`
     }
 
-    return `<tr><td style="background-color: ${escapeHtml(fc.backgroundColor)}; padding: 42px 24px; ${border}">` +
+    return `<tr><td${isPreview ? ' data-section-id="footer"' : ''} style="background-color: ${escapeHtml(fc.backgroundColor)}; padding: 42px 24px; ${border}">` +
       `<table width="100%" cellpadding="0" cellspacing="0" border="0">${innerRows}</table>` +
       `</td></tr>\n`
   }

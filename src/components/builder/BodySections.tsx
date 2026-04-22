@@ -331,6 +331,7 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
 function SectionEditor({ section, index }: { section: ContentSection; index: number }) {
   const store = useCampaignStore()
   const [collapsed, setCollapsed] = useState(false)
+  const isHighlighted = store.focusedSection === `body-${section.id}`
 
   const layoutLabel =
     isPeopleSection(section)
@@ -347,7 +348,13 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="border border-gray-400 rounded-md overflow-hidden mt-3">
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-section-id={`body-${section.id}`}
+      className={`border border-gray-400 rounded-md overflow-hidden mt-3 transition-shadow ${isHighlighted ? 'ring-2 ring-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.35)]' : ''}`}
+      onClick={() => store.setFocusedSection(`body-${section.id}`)}
+    >
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-400">
         <div className="flex items-center gap-1.5 min-w-0">

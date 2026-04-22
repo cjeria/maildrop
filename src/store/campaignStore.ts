@@ -63,6 +63,7 @@ export interface PeopleSection {
 }
 
 export type SectionId = 'header' | 'body' | 'footer'
+export type FocusedSectionId = SectionId | `body-${string}`
 export const DEFAULT_SECTION_ORDER: SectionId[] = ['header', 'body', 'footer']
 
 export type HeaderSectionId = 'logo' | 'title' | 'subtitle' | 'datePill'
@@ -246,8 +247,8 @@ export interface CampaignStore {
   setLinkColor: (color: string) => void
 
   // UI state (not persisted)
-  focusedSection: SectionId | null
-  setFocusedSection: (id: SectionId | null) => void
+  focusedSection: FocusedSectionId | null
+  setFocusedSection: (id: FocusedSectionId | null) => void
 
   // Persistence
   resetStore: () => void
