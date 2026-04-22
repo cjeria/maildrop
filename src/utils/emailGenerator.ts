@@ -244,7 +244,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
           if (col.subtext) {
             const isHtml = /<[a-z][\s\S]*>/i.test(col.subtext)
             content += isHtml
-              ? `<div style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${processInlineImages(col.subtext, colWidth)}</div>`
+              ? `<div style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(processInlineImages(resolve(col.subtext), colWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))}</div>`
               : `<p style="margin: 0; font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${escapeHtml(col.subtext).replace(/\n/g, '<br>')}</p>`
           }
           return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content || '&nbsp;'}</td>`
