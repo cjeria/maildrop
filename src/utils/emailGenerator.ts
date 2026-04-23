@@ -51,17 +51,28 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
-// Stamp inline styles onto every <p> tag so paragraph spacing survives when
-// Outlook strips <head>/<style> on paste into its compose window.
-function inlineParagraphStyles(html: string): string {
-  const base = 'margin: 0; padding: 0; line-height: 1.6;'
-  return html.replace(/<p(\s[^>]*)?>/gi, (_match, attrs = '') => {
-    if (/style\s*=/i.test(attrs)) {
-      return `<p${attrs.replace(/(style\s*=\s*["'])([^"']*)(["'])/i, (_s: string, open: string, existing: string, close: string) =>
-        `${open}${base} ${existing}${close}`)}>`
+// Stamp inline styles onto every <p> and <li> tag so font size, color, and
+// spacing survive when Outlook's Word engine converts the HTML on paste.
+// contextStyles carries the per-site overrides (font-size, color, font-family)
+// that would otherwise only exist on a parent <div> or <td> that Word ignores.
+function inlineParagraphStyles(html: string, contextStyles = ''): string {
+  const pBase = 'margin: 0; padding: 0; line-height: 1.6;'
+  const pFull = contextStyles ? `${pBase} ${contextStyles}` : pBase
+  const liFull = contextStyles ? `line-height: 1.6; ${contextStyles}` : ''
+
+  const stamp = (tag: string, styles: string) =>
+    (_match: string, attrs: string | undefined = ''): string => {
+      if (/style\s*=/i.test(attrs)) {
+        return `<${tag}${attrs.replace(/(style\s*=\s*["'])([^"']*)(["'])/i,
+          (_s: string, open: string, existing: string, close: string) =>
+            `${open}${styles} ${existing}${close}`)}>`
+      }
+      return `<${tag}${attrs} style="${styles}">`
     }
-    return `<p${attrs} style="${base}">`
-  })
+
+  let result = html.replace(/<p(\s[^>]*)?>/gi, stamp('p', pFull))
+  if (liFull) result = result.replace(/<li(\s[^>]*)?>/gi, stamp('li', liFull))
+  return result
 }
 
 // Replace runs of 2+ spaces in HTML text nodes with alternating &nbsp;/space
@@ -168,8 +179,8 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
     html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim().length > 0
 
   // Applies the same rendering pipeline used for body content to any TipTap HTML
-  const processTiptapHtml = (html: string, width: number): string => {
-    const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width))
+  const processTiptapHtml = (html: string, width: number, contextStyles = ''): string => {
+    const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width), contextStyles)
     return preserveSpaces(inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))
   }
 
@@ -179,7 +190,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
     const isHtml = /<[a-z][\s\S]*>/i.test(title)
     if (isHtml && !hasVisibleContent(title)) return ''
     const inner = isHtml
-      ? `<div style="font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280; line-height: 1.3;">${processTiptapHtml(title, contentWidth)}</div>`
+      ? `<div style="font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280; line-height: 1.3;">${processTiptapHtml(title, contentWidth, `font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;`)}</div>`
       : `<p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(title)}</p>`
     const fieldAttr = fieldId && isPreview ? ` data-field-id="${fieldId}"` : ''
     return `<tr><td${fieldAttr} style="padding: 18px 24px 0; ${border} ${bg}">${inner}</td></tr>\n`
@@ -236,8 +247,9 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   const renderBody = (topBorder: string): string => {
     let out = ''
     if (body.content) {
+      const bodyContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
       const bodyHtml = preserveSpaces(
-        inlineParagraphStyles(processInlineImages(resolve(body.content), contentWidth))
+        inlineParagraphStyles(processInlineImages(resolve(body.content), contentWidth), bodyContextStyles)
           .replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
       )
       out += `<tr><td${isPreview ? ' data-section-id="body" data-field-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
@@ -280,14 +292,15 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
             const isTitleHtml = /<[a-z][\s\S]*>/i.test(col.title)
             if (isTitleHtml ? hasVisibleContent(col.title) : col.title.trim()) {
               content += isTitleHtml
-                ? `<div${isPreview ? ` data-field-id="col-${col.id}-title"` : ''} style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth)}</div>`
+                ? `<div${isPreview ? ` data-field-id="col-${col.id}-title"` : ''} style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth, `font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937;`)}</div>`
                 : `<p style="margin: 0 0 12px; font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3;">${escapeHtml(col.title)}</p>`
             }
           }
           if (col.subtext) {
             const isHtml = /<[a-z][\s\S]*>/i.test(col.subtext)
+            const subtextContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563;`
             content += isHtml
-              ? `<div${isPreview ? ` data-field-id="col-${col.id}-subtext"` : ''} style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(processInlineImages(resolve(col.subtext), colWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))}</div>`
+              ? `<div${isPreview ? ` data-field-id="col-${col.id}-subtext"` : ''} style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(inlineParagraphStyles(processInlineImages(resolve(col.subtext), colWidth), subtextContextStyles).replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))}</div>`
               : `<p style="margin: 0; font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${escapeHtml(col.subtext).replace(/\n/g, '<br>')}</p>`
           }
           return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content || '&nbsp;'}</td>`
