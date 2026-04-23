@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCampaignStore, defaultState } from '../store/campaignStore'
-import type { PersistedState } from '../store/campaignStore'
 import { useSlotsStore } from '../store/slotsStore'
-import type { CampaignSlot } from '../store/slotsStore'
 
 function IconTooltip({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -13,39 +11,6 @@ function IconTooltip({ label, children }: { label: string; children: React.React
       </div>
     </div>
   )
-}
-
-function Toast({ message, type }: { message: string; type: 'error' | 'success' }) {
-  return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
-      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${
-        type === 'error' ? 'bg-red-600' : 'bg-gray-800'
-      }`}>
-        {type === 'error' ? (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-        ) : (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-        {message}
-      </div>
-    </div>
-  )
-}
-
-const DEFAULT_NAMES = new Set(['Untitled Campaign', 'untitled campaign', ''])
-
-function isDefaultName(name: string) {
-  return DEFAULT_NAMES.has(name.trim())
-}
-
-function slugify(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'campaign'
 }
 
 export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) {
@@ -74,141 +39,6 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameName, setRenameName] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Export/Import state
-  const [exportNameModal, setExportNameModal] = useState(false)
-  const [exportNameValue, setExportNameValue] = useState('')
-  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
-
-  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
-    setToast({ message, type })
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    toastTimerRef.current = setTimeout(() => setToast(null), 3500)
-  }
-
-  // Build PersistedState from current store (fallback when no active slot)
-  const getCurrentState = (): PersistedState => {
-    if (slots.activeSlotId) {
-      const slot = slots.getSlot(slots.activeSlotId)
-      if (slot) return slot.state
-    }
-    const s = store
-    return {
-      campaignName: s.campaignName,
-      recipientName: s.recipientName,
-      link: s.link,
-      addresses: s.addresses,
-      selectedAddress: s.selectedAddress,
-      headerImage: s.headerImage,
-      headerSectionOrder: s.headerSectionOrder,
-      headerConfig: s.headerConfig,
-      body: s.body,
-      bodySections: s.bodySections,
-      footerConfig: s.footerConfig,
-      template: s.template,
-      font: s.font,
-      fontSize: s.fontSize,
-      cornerRadius: s.cornerRadius,
-      backgroundColor: s.backgroundColor,
-      cardColor: s.cardColor,
-      borderEnabled: s.borderEnabled,
-      borderColor: s.borderColor,
-      linkColor: s.linkColor,
-    }
-  }
-
-  const triggerDownload = (slot: CampaignSlot) => {
-    const json = JSON.stringify(slot, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${slugify(slot.name)}.maildrop.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const doExport = (name: string) => {
-    const state = { ...getCurrentState(), campaignName: name }
-    const slot: CampaignSlot = {
-      id: slots.activeSlotId ?? 'export',
-      name,
-      savedAt: Date.now(),
-      state,
-    }
-    triggerDownload(slot)
-  }
-
-  const handleExportClick = () => {
-    const name = store.campaignName
-    if (isDefaultName(name)) {
-      setExportNameValue('')
-      setExportNameModal(true)
-    } else {
-      doExport(name)
-    }
-  }
-
-  const handleExportWithName = () => {
-    const name = exportNameValue.trim()
-    if (!name) return
-    // Also rename the active slot so the session stays consistent
-    if (slots.activeSlotId) slots.renameSlot(slots.activeSlotId, name)
-    store.setCampaignName(name)
-    doExport(name)
-    setExportNameModal(false)
-  }
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    // Reset immediately so the same file can be re-imported if needed
-    e.target.value = ''
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const raw = event.target?.result as string
-        const parsed = JSON.parse(raw) as unknown
-
-        // Validate top-level CampaignSlot shape
-        if (
-          typeof parsed !== 'object' || parsed === null ||
-          typeof (parsed as Record<string, unknown>).name !== 'string' ||
-          typeof (parsed as Record<string, unknown>).savedAt !== 'number' ||
-          typeof (parsed as Record<string, unknown>).state !== 'object' ||
-          (parsed as Record<string, unknown>).state === null ||
-          typeof ((parsed as Record<string, unknown>).state as Record<string, unknown>).campaignName !== 'string'
-        ) {
-          showToast("Couldn't import campaign — file may be corrupted.")
-          return
-        }
-
-        const incoming = parsed as CampaignSlot
-
-        // Handle name collision — append "(imported)" suffix
-        let name = incoming.name.trim() || 'Imported Campaign'
-        if (slots.slots.some((s) => s.name === name)) {
-          name = `${name} (imported)`
-        }
-
-        const newState: PersistedState = { ...incoming.state, campaignName: name }
-        const id = slots.saveSlot(name, newState)
-        onCampaignSwitch?.()
-        slots.setActiveSlot(id)
-        store.loadState(newState)
-        showToast(`"${name}" imported successfully.`, 'success')
-      } catch {
-        showToast("Couldn't import campaign — file may be corrupted.")
-      }
-    }
-    reader.onerror = () => showToast("Couldn't import campaign — file may be corrupted.")
-    reader.readAsText(file)
-  }
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -300,15 +130,6 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
 
   return (
     <>
-      {/* Hidden file input for import */}
-      <input
-        ref={importInputRef}
-        type="file"
-        accept=".json"
-        className="hidden"
-        onChange={handleImportFile}
-      />
-
       <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-300 shrink-0">
         {/* Campaign title dropdown */}
         <div className="relative" ref={dropdownRef}>
@@ -383,32 +204,6 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
           <span className="text-xs text-gray-400 select-none">Saved</span>
         )}
 
-        {/* Import button */}
-        <button
-          onClick={() => importInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          Import
-        </button>
-
-        {/* Export button */}
-        <button
-          onClick={handleExportClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Export
-        </button>
-
         {/* New Campaign primary button */}
         <button
           onClick={() => { setNewCampaignName(''); setNewCampaignModal(true) }}
@@ -420,7 +215,6 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
           </svg>
           New Campaign
         </button>
-        {/* Reset button — hidden, reserved for future use */}
       </div>
 
       {/* Bottom row — hidden, reserved for future use */}
@@ -576,46 +370,6 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
           </div>
         </div>
       )}
-
-      {/* Export — name required modal (Phase 3) */}
-      {exportNameModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-80">
-            <h2 className="text-base font-semibold text-gray-900 mb-1">Name your campaign</h2>
-            <p className="text-xs text-gray-500 mb-4">Give this campaign a name before exporting so it's recognisable when imported.</p>
-            <input
-              autoFocus
-              type="text"
-              placeholder="e.g. HGC April 2026"
-              value={exportNameValue}
-              onChange={(e) => setExportNameValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleExportWithName()
-                if (e.key === 'Escape') setExportNameModal(false)
-              }}
-              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setExportNameModal(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleExportWithName}
-                disabled={!exportNameValue.trim()}
-                className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50"
-              >
-                Export
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast notification */}
-      {toast && <Toast message={toast.message} type={toast.type} />}
     </>
   )
 }

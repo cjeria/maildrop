@@ -1,13 +1,43 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
-import type { FocusedSectionId } from '../../store/campaignStore'
+import type { FocusedSectionId, PersistedState } from '../../store/campaignStore'
 import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
 import { warmIconCache } from '../../utils/socialIconUploader'
 import type { SocialPlatform } from '../../store/campaignStore'
+import { useSlotsStore } from '../../store/slotsStore'
+import type { CampaignSlot } from '../../store/slotsStore'
 
 const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 
 const HIGHLIGHT_SHADOW = '0 0 0 2px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.35)'
+
+function Toast({ message, type }: { message: string; type: 'error' | 'success' }) {
+  return (
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${
+        type === 'error' ? 'bg-red-600' : 'bg-gray-800'
+      }`}>
+        {type === 'error' ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {message}
+      </div>
+    </div>
+  )
+}
+
+const DEFAULT_NAMES = new Set(['Untitled Campaign', 'untitled campaign', ''])
+const isDefaultName = (name: string) => DEFAULT_NAMES.has(name.trim())
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'campaign'
 
 function applyPreviewHighlight(doc: Document, id: FocusedSectionId | null) {
   doc.querySelectorAll('[data-section-id], [data-field-id]').forEach((el) => {
@@ -49,12 +79,40 @@ function attachPreviewClickListener(
   ;(iframe as any).__sectionClickListener = handler
 }
 
-export function EmailPreview() {
+export function EmailPreview({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) {
   const store = useCampaignStore()
+  const slots = useSlotsStore()
   const [copied, setCopied] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [iconCacheVersion, setIconCacheVersion] = useState(0)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
   const focusedSection = store.focusedSection
+
+  // Import/Export state
+  const [exportNameModal, setExportNameModal] = useState(false)
+  const [exportNameValue, setExportNameValue] = useState('')
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+    setToast({ message, type })
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500)
+  }
+
+  // Close more dropdown on outside click
+  useEffect(() => {
+    if (!moreOpen) return
+    const handler = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [moreOpen])
 
   // Upload social icons to Cloudinary so they render in Gmail
   const { links, color, size } = store.footerConfig.socialIcons
@@ -194,22 +252,127 @@ export function EmailPreview() {
     URL.revokeObjectURL(url)
   }
 
+  // --- Import / Export ---
+
+  const getCurrentState = (): PersistedState => {
+    if (slots.activeSlotId) {
+      const slot = slots.getSlot(slots.activeSlotId)
+      if (slot) return slot.state
+    }
+    const s = store
+    return {
+      campaignName: s.campaignName,
+      recipientName: s.recipientName,
+      link: s.link,
+      addresses: s.addresses,
+      selectedAddress: s.selectedAddress,
+      headerImage: s.headerImage,
+      headerSectionOrder: s.headerSectionOrder,
+      headerConfig: s.headerConfig,
+      body: s.body,
+      bodySections: s.bodySections,
+      footerConfig: s.footerConfig,
+      template: s.template,
+      font: s.font,
+      fontSize: s.fontSize,
+      cornerRadius: s.cornerRadius,
+      backgroundColor: s.backgroundColor,
+      cardColor: s.cardColor,
+      borderEnabled: s.borderEnabled,
+      borderColor: s.borderColor,
+      linkColor: s.linkColor,
+    }
+  }
+
+  const triggerDownloadJson = (slot: CampaignSlot) => {
+    const json = JSON.stringify(slot, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slugify(slot.name)}.maildrop.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const doExport = (name: string) => {
+    const state = { ...getCurrentState(), campaignName: name }
+    const slot: CampaignSlot = {
+      id: slots.activeSlotId ?? 'export',
+      name,
+      savedAt: Date.now(),
+      state,
+    }
+    triggerDownloadJson(slot)
+  }
+
+  const handleExportClick = () => {
+    const name = store.campaignName
+    if (isDefaultName(name)) {
+      setExportNameValue('')
+      setExportNameModal(true)
+    } else {
+      doExport(name)
+    }
+  }
+
+  const handleExportWithName = () => {
+    const name = exportNameValue.trim()
+    if (!name) return
+    if (slots.activeSlotId) slots.renameSlot(slots.activeSlotId, name)
+    store.setCampaignName(name)
+    doExport(name)
+    setExportNameModal(false)
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const raw = event.target?.result as string
+        const parsed = JSON.parse(raw) as unknown
+        if (
+          typeof parsed !== 'object' || parsed === null ||
+          typeof (parsed as Record<string, unknown>).name !== 'string' ||
+          typeof (parsed as Record<string, unknown>).savedAt !== 'number' ||
+          typeof (parsed as Record<string, unknown>).state !== 'object' ||
+          (parsed as Record<string, unknown>).state === null ||
+          typeof ((parsed as Record<string, unknown>).state as Record<string, unknown>).campaignName !== 'string'
+        ) {
+          showToast("Couldn't import campaign — file may be corrupted.")
+          return
+        }
+        const incoming = parsed as CampaignSlot
+        let name = incoming.name.trim() || 'Imported Campaign'
+        if (slots.slots.some((s) => s.name === name)) name = `${name} (imported)`
+        const newState: PersistedState = { ...incoming.state, campaignName: name }
+        const id = slots.saveSlot(name, newState)
+        onCampaignSwitch?.()
+        slots.setActiveSlot(id)
+        store.loadState(newState)
+        showToast(`"${name}" imported successfully.`, 'success')
+      } catch {
+        showToast("Couldn't import campaign — file may be corrupted.")
+      }
+    }
+    reader.onerror = () => showToast("Couldn't import campaign — file may be corrupted.")
+    reader.readAsText(file)
+  }
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header label */}
+      {/* Hidden file input for import */}
+      <input ref={importInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
+
+      {/* Header */}
       <div className="flex items-center justify-between px-4 border-b border-gray-300 shrink-0 bg-white h-11">
         <span className="text-sm font-medium text-gray-500">Email Preview</span>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" />
-              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-            </svg>
-            {copied ? 'Copied!' : 'Copy to clipboard'}
-          </button>
           <button
             onClick={handleDownload}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
@@ -219,8 +382,60 @@ export function EmailPreview() {
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Download .eml
+            Download for Outlook
           </button>
+
+          {/* Three-dots more menu */}
+          <div className="relative" ref={moreRef}>
+            <button
+              onClick={() => setMoreOpen((o) => !o)}
+              className="flex items-center justify-center w-7 h-7 border border-gray-300 rounded hover:bg-gray-50 text-gray-600 transition-colors"
+              title="More options"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
+              </svg>
+            </button>
+
+            {moreOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <button
+                  onClick={() => { handleExportClick(); setMoreOpen(false) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Export .json file
+                </button>
+                <button
+                  onClick={() => { importInputRef.current?.click(); setMoreOpen(false) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Import .json file
+                </button>
+                <button
+                  onClick={() => { handleCopy(); setMoreOpen(false) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                  </svg>
+                  {copied ? 'Copied!' : 'Copy to clipboard'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -333,6 +548,46 @@ export function EmailPreview() {
           style={{ border: 'none' }}
         />
       </div>
+
+      {/* Export — name required modal */}
+      {exportNameModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-80">
+            <h2 className="text-base font-semibold text-gray-900 mb-1">Name your campaign</h2>
+            <p className="text-xs text-gray-500 mb-4">Give this campaign a name before exporting so it's recognisable when imported.</p>
+            <input
+              autoFocus
+              type="text"
+              placeholder="e.g. HGC April 2026"
+              value={exportNameValue}
+              onChange={(e) => setExportNameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleExportWithName()
+                if (e.key === 'Escape') setExportNameModal(false)
+              }}
+              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setExportNameModal(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportWithName}
+                disabled={!exportNameValue.trim()}
+                className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
 }

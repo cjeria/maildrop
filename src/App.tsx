@@ -62,7 +62,7 @@ export function App() {
 
         {/* Right panel — Email Preview */}
         <div className="flex-1 overflow-hidden">
-          <EmailPreview />
+          <EmailPreview onCampaignSwitch={startLoading} />
         </div>
       </div>}
     </div>
