@@ -51,6 +51,19 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
+// Stamp inline styles onto every <p> tag so paragraph spacing survives when
+// Outlook strips <head>/<style> on paste into its compose window.
+function inlineParagraphStyles(html: string): string {
+  const base = 'margin: 0; padding: 0; line-height: 1.6;'
+  return html.replace(/<p(\s[^>]*)?>/gi, (_match, attrs = '') => {
+    if (/style\s*=/i.test(attrs)) {
+      return `<p${attrs.replace(/(style\s*=\s*["'])([^"']*)(["'])/i, (_s, open, existing, close) =>
+        `${open}${base} ${existing}${close}`)}>`
+    }
+    return `<p${attrs} style="${base}">`
+  })
+}
+
 // Replace runs of 2+ spaces in HTML text nodes with alternating &nbsp;/space
 // so spaces are visually preserved without needing white-space: pre-wrap
 function preserveSpaces(html: string): string {
@@ -155,8 +168,10 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
     html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim().length > 0
 
   // Applies the same rendering pipeline used for body content to any TipTap HTML
-  const processTiptapHtml = (html: string, width: number): string =>
-    preserveSpaces(processInlineImages(resolve(html), width).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))
+  const processTiptapHtml = (html: string, width: number): string => {
+    const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width))
+    return preserveSpaces(inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))
+  }
 
   // Renders a section title (HTML or plain text) into a <tr> row, or '' if empty
   const renderSectionTitleRow = (title: string, border: string, bg: string, fieldId?: string): string => {
@@ -222,7 +237,8 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
     let out = ''
     if (body.content) {
       const bodyHtml = preserveSpaces(
-        processInlineImages(resolve(body.content), contentWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>')
+        inlineParagraphStyles(processInlineImages(resolve(body.content), contentWidth))
+          .replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
       )
       out += `<tr><td${isPreview ? ' data-section-id="body" data-field-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
       topBorder = ''
