@@ -243,7 +243,7 @@ function SortablePersonCard({
           </button>
           <button
             type="button"
-            onClick={() => store.removePersonCardFromSection(sectionId, card.id)}
+            onClick={() => { if (window.confirm('Remove this person?')) store.removePersonCardFromSection(sectionId, card.id) }}
             className="text-gray-400 hover:text-red-500 transition-colors"
             title="Remove"
           >
@@ -397,7 +397,7 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
           />
           <button
             type="button"
-            onClick={() => store.removeBodySection(section.id)}
+            onClick={() => { if (window.confirm('Delete this section? This cannot be undone.')) store.removeBodySection(section.id) }}
             title="Remove section"
             className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
           >

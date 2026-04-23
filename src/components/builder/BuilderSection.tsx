@@ -94,7 +94,7 @@ export function BuilderSection({
             {activeDraftId && (
               <button
                 type="button"
-                onClick={() => onDeleteDraft?.(activeDraftId)}
+                onClick={() => { if (window.confirm('Delete this draft?')) onDeleteDraft?.(activeDraftId) }}
                 className="p-0.5 text-gray-400 cursor-pointer hover:text-red-500 transition-colors"
                 title="Delete draft"
               >

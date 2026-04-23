@@ -44,7 +44,7 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
             className="max-h-32 rounded border border-gray-300 object-contain"
           />
           <button
-            onClick={() => onChange('')}
+            onClick={() => { if (window.confirm('Remove this image?')) onChange('') }}
             className="absolute top-1 right-1 bg-white border border-gray-400 rounded p-0.5 text-gray-500 cursor-pointer hover:text-red-500 hover:border-red-300 opacity-0 group-hover:opacity-100 transition-all"
             title="Remove image"
           >
