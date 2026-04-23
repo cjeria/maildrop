@@ -159,14 +159,15 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
     preserveSpaces(processInlineImages(resolve(html), width).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))
 
   // Renders a section title (HTML or plain text) into a <tr> row, or '' if empty
-  const renderSectionTitleRow = (title: string, border: string, bg: string): string => {
+  const renderSectionTitleRow = (title: string, border: string, bg: string, fieldId?: string): string => {
     if (!title) return ''
     const isHtml = /<[a-z][\s\S]*>/i.test(title)
     if (isHtml && !hasVisibleContent(title)) return ''
     const inner = isHtml
       ? `<div style="font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280; line-height: 1.3;">${processTiptapHtml(title, contentWidth)}</div>`
       : `<p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(title)}</p>`
-    return `<tr><td style="padding: 18px 24px 0; ${border} ${bg}">${inner}</td></tr>\n`
+    const fieldAttr = fieldId && isPreview ? ` data-field-id="${fieldId}"` : ''
+    return `<tr><td${fieldAttr} style="padding: 18px 24px 0; ${border} ${bg}">${inner}</td></tr>\n`
   }
 
   // Per-section renderers — each receives whether it is the first visible row
@@ -199,18 +200,19 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       const align = hc.alignment
       const logoMargin = align === 'center' ? 'margin: 0 auto;' : align === 'right' ? 'margin: 0 0 0 auto;' : 'margin: 0;'
       const logoPx: Record<string, string> = { small: '28px', medium: '40px', large: '60px' }
+      const fieldAttrInner = isPreview ? ` data-field-id="header-${sectionId}"` : ''
       if (sectionId === 'logo') {
         const lh = logoPx[hc.logo.size ?? 'medium']
-        inner += `<tr><td align="${align}" style="padding-bottom:${pb};"><img src="${escapeHtml(hc.logo.imageUrl)}" height="${lh.replace('px', '')}" alt="" style="display: block; height: ${lh}; ${logoMargin}" /></td></tr>\n`
+        inner += `<tr><td${fieldAttrInner} align="${align}" style="padding-bottom:${pb};"><img src="${escapeHtml(hc.logo.imageUrl)}" height="${lh.replace('px', '')}" alt="" style="display: block; height: ${lh}; ${logoMargin}" /></td></tr>\n`
       } else if (sectionId === 'title') {
-        inner += `<tr><td align="${align}" style="padding-bottom:${pb};"><p style="margin:0;font-family:${escapeHtml(hc.title.fontFamily)},serif;font-size:${titlePx[hc.title.fontSize] ?? '64px'};color:${hc.title.color};line-height:1.1;font-weight:${hc.title.fontWeight ?? '700'};text-align:${align};">${escapeHtml(hc.title.text)}</p></td></tr>\n`
+        inner += `<tr><td${fieldAttrInner} align="${align}" style="padding-bottom:${pb};"><p style="margin:0;font-family:${escapeHtml(hc.title.fontFamily)},serif;font-size:${titlePx[hc.title.fontSize] ?? '64px'};color:${hc.title.color};line-height:1.1;font-weight:${hc.title.fontWeight ?? '700'};text-align:${align};">${escapeHtml(hc.title.text)}</p></td></tr>\n`
       } else if (sectionId === 'subtitle') {
-        inner += `<tr><td align="${align}" style="padding-bottom:${pb};"><p style="margin:0;font-family:Arial,sans-serif;font-size:${subtitlePx[hc.subtitle.fontSize] ?? '15px'};color:${hc.subtitle.color};line-height:1.5;font-weight:300;text-align:${align};">${escapeHtml(hc.subtitle.text)}</p></td></tr>\n`
+        inner += `<tr><td${fieldAttrInner} align="${align}" style="padding-bottom:${pb};"><p style="margin:0;font-family:Arial,sans-serif;font-size:${subtitlePx[hc.subtitle.fontSize] ?? '15px'};color:${hc.subtitle.color};line-height:1.5;font-weight:300;text-align:${align};">${escapeHtml(hc.subtitle.text)}</p></td></tr>\n`
       } else if (sectionId === 'datePill') {
         const pillCss = hc.datePill.style === 'filled'
           ? `display:inline-block;background-color:${hc.datePill.color};border-radius:20px;padding:3px 13px;font-family:Arial,sans-serif;font-size:11px;color:#ffffff;letter-spacing:0.06em;font-weight:600;`
           : `display:inline-block;border:1.5px solid ${hc.datePill.color};border-radius:20px;padding:3px 13px;font-family:Arial,sans-serif;font-size:11px;color:${hc.datePill.color};letter-spacing:0.06em;font-weight:600;`
-        inner += `<tr><td align="${align}" style="padding-bottom:${pb};"><span style="${pillCss}">${escapeHtml(hc.datePill.text)}</span></td></tr>\n`
+        inner += `<tr><td${fieldAttrInner} align="${align}" style="padding-bottom:${pb};"><span style="${pillCss}">${escapeHtml(hc.datePill.text)}</span></td></tr>\n`
       }
     }
     return `<tr><td${isPreview ? ' data-section-id="header"' : ''} style="background-color:${hc.backgroundColor};padding:42px 24px;${topBorder}"><table width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td></tr>\n`
@@ -222,7 +224,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       const bodyHtml = preserveSpaces(
         processInlineImages(resolve(body.content), contentWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>')
       )
-      out += `<tr><td${isPreview ? ' data-section-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
+      out += `<tr><td${isPreview ? ' data-section-id="body" data-field-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
       topBorder = ''
     }
 
@@ -242,7 +244,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
           sectionRows += renderSectionTitleRow(ps.title || 'People', sectionBorder, bgStyle) || `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">People</p></td></tr>\n`
           sectionRows += `<tr><td style="padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
         } else if (ps.cards.length > 0) {
-          const titleRow = renderSectionTitleRow(ps.title, sectionBorder, bgStyle)
+          const titleRow = renderSectionTitleRow(ps.title, sectionBorder, bgStyle, `body-${section.id}-title`)
           const rowBorder = titleRow ? '' : sectionBorder
           sectionRows += titleRow
           sectionRows += `<tr><td style="padding: 0; ${rowBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
@@ -252,7 +254,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         const colCount = cs.columns.length
         const gap = 16
         const colWidth = Math.floor((contentWidth - gap * (colCount - 1)) / colCount)
-        const titleRow = renderSectionTitleRow(cs.title, sectionBorder, bgStyle)
+        const titleRow = renderSectionTitleRow(cs.title, sectionBorder, bgStyle, `body-${section.id}-title`)
         const cells = cs.columns.map((col, i) => {
           const paddingLeft = i === 0 ? 24 : gap / 2
           const paddingRight = i === colCount - 1 ? 24 : gap / 2
@@ -262,14 +264,14 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
             const isTitleHtml = /<[a-z][\s\S]*>/i.test(col.title)
             if (isTitleHtml ? hasVisibleContent(col.title) : col.title.trim()) {
               content += isTitleHtml
-                ? `<div style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth)}</div>`
+                ? `<div${isPreview ? ` data-field-id="col-${col.id}-title"` : ''} style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth)}</div>`
                 : `<p style="margin: 0 0 12px; font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3;">${escapeHtml(col.title)}</p>`
             }
           }
           if (col.subtext) {
             const isHtml = /<[a-z][\s\S]*>/i.test(col.subtext)
             content += isHtml
-              ? `<div style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(processInlineImages(resolve(col.subtext), colWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))}</div>`
+              ? `<div${isPreview ? ` data-field-id="col-${col.id}-subtext"` : ''} style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(processInlineImages(resolve(col.subtext), colWidth).replace(/<p><\/p>/g, '<p>&nbsp;</p>'))}</div>`
               : `<p style="margin: 0; font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${escapeHtml(col.subtext).replace(/\n/g, '<br>')}</p>`
           }
           return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content || '&nbsp;'}</td>`
@@ -327,7 +329,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       const bt = fc.brandText
       const btFontSize = bt.fontSize === 'small' ? '11px' : bt.fontSize === 'medium' ? '13px' : '15px'
       const btSpacing = bt.letterSpacing === 'normal' ? '0' : bt.letterSpacing === 'wide' ? '0.08em' : '0.16em'
-      innerRows += `<tr><td align="${bt.alignment}" style="padding-bottom: 16px;">` +
+      innerRows += `<tr><td${isPreview ? ' data-field-id="footer-brand"' : ''} align="${bt.alignment}" style="padding-bottom: 16px;">` +
         `<p style="margin: 0; font-family: Arial, sans-serif; font-size: ${btFontSize}; color: ${escapeHtml(bt.color)}; letter-spacing: ${btSpacing}; text-transform: uppercase; font-weight: 600; text-align: ${bt.alignment};">${escapeHtml(bt.text)}</p>` +
         `</td></tr>\n`
     }

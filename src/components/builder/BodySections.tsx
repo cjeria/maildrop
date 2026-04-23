@@ -120,18 +120,22 @@ function ColumnEditor({
         onChange={(url) => update({ imageUrl: url })}
         label="column image"
       />
-      <RichTextEditor
-        content={column.title}
-        onChange={(html) => update({ title: html })}
-      />
-      <RichTextEditor
-        content={column.subtext}
-        onChange={(html) => update({ subtext: html })}
-        font={store.font}
-        onFontChange={store.setFont}
-        fontSize={store.fontSize}
-        onFontSizeChange={store.setFontSize}
-      />
+      <div onFocus={() => store.setFocusedSection(`col-${column.id}-title`)} data-field-id={`col-${column.id}-title`}>
+        <RichTextEditor
+          content={column.title}
+          onChange={(html) => update({ title: html })}
+        />
+      </div>
+      <div onFocus={() => store.setFocusedSection(`col-${column.id}-subtext`)} data-field-id={`col-${column.id}-subtext`}>
+        <RichTextEditor
+          content={column.subtext}
+          onChange={(html) => update({ subtext: html })}
+          font={store.font}
+          onFontChange={store.setFont}
+          fontSize={store.fontSize}
+          onFontSizeChange={store.setFontSize}
+        />
+      </div>
     </div>
   )
 }
@@ -331,8 +335,6 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
 function SectionEditor({ section, index }: { section: ContentSection; index: number }) {
   const store = useCampaignStore()
   const [collapsed, setCollapsed] = useState(false)
-  const isHighlighted = store.focusedSection === `body-${section.id}`
-
   const layoutLabel =
     isPeopleSection(section)
       ? 'People'
@@ -352,8 +354,7 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
       ref={setNodeRef}
       style={style}
       data-section-id={`body-${section.id}`}
-      className={`border border-gray-400 rounded-md overflow-hidden mt-3 transition-shadow ${isHighlighted ? 'ring-2 ring-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.35)]' : ''}`}
-      onClick={() => store.setFocusedSection(`body-${section.id}`)}
+      className="border border-gray-400 rounded-md overflow-hidden mt-3"
     >
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-400">
@@ -411,10 +412,12 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
 
       {!collapsed && (
         <div className="p-4 space-y-5">
-          <RichTextEditor
-            content={section.title}
-            onChange={(html) => store.updateBodySectionTitle(section.id, html)}
-          />
+          <div onFocus={() => store.setFocusedSection(`body-${section.id}-title`)} data-field-id={`body-${section.id}-title`}>
+            <RichTextEditor
+              content={section.title}
+              onChange={(html) => store.updateBodySectionTitle(section.id, html)}
+            />
+          </div>
 
           {isColumnSection(section)
             ? section.columns.map((col, i) => (

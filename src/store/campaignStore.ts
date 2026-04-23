@@ -63,7 +63,7 @@ export interface PeopleSection {
 }
 
 export type SectionId = 'header' | 'body' | 'footer'
-export type FocusedSectionId = SectionId | `body-${string}`
+export type FocusedSectionId = string
 export const DEFAULT_SECTION_ORDER: SectionId[] = ['header', 'body', 'footer']
 
 export type HeaderSectionId = 'logo' | 'title' | 'subtitle' | 'datePill'

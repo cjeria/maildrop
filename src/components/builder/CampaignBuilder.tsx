@@ -1,34 +1,45 @@
+import { useEffect } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
-import type { FocusedSectionId } from '../../store/campaignStore'
 import { BuilderSection } from './BuilderSection'
 import { RichTextEditor } from './RichTextEditor'
 import { BodySections, AddSectionButton } from './BodySections'
 import { HeaderEditor } from './HeaderEditor'
 import { FooterEditor } from './FooterEditor'
 
-const FOCUS_RING = 'ring-2 ring-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.35)] rounded-md'
+const FIELD_OUTLINE = '2px solid #3b82f6'
+const FIELD_OUTLINE_OFFSET = '2px'
 
 export function CampaignBuilder() {
   const store = useCampaignStore()
   const focusedSection = store.focusedSection
-  const focus = (id: FocusedSectionId) => () => store.setFocusedSection(id)
-  const ring = (id: FocusedSectionId) => focusedSection === id ? FOCUS_RING : ''
+
+  // Apply/clear outline on the matching [data-field-id] element in the builder DOM
+  useEffect(() => {
+    document.querySelectorAll('[data-field-id]').forEach((el) => {
+      const htmlEl = el as HTMLElement
+      // Skip elements inside the preview iframe — only target the main document
+      htmlEl.style.outline = ''
+      htmlEl.style.outlineOffset = ''
+    })
+    if (!focusedSection) return
+    const el = document.querySelector(`[data-field-id="${focusedSection}"]`) as HTMLElement | null
+    if (el) {
+      el.style.outline = FIELD_OUTLINE
+      el.style.outlineOffset = FIELD_OUTLINE_OFFSET
+    }
+  }, [focusedSection])
 
   return (
     <div
       className="space-y-5 p-4"
       onMouseDown={(e) => {
-        if (!(e.target as HTMLElement).closest('[data-section-id]')) {
+        // Clear focus when clicking anything that isn't a form field
+        if (!(e.target as HTMLElement).closest('[data-field-id]')) {
           store.setFocusedSection(null)
         }
       }}
     >
-      <div
-        data-section-id="header"
-        className={`transition-shadow ${ring('header')}`}
-        onFocus={focus('header')}
-        onClick={() => store.setFocusedSection('header')}
-      >
+      <div data-section-id="header">
         <BuilderSection
           title="Header"
           enabled={store.headerImage.enabled}
@@ -38,36 +49,23 @@ export function CampaignBuilder() {
         </BuilderSection>
       </div>
 
-      <div
-        data-section-id="body"
-        className={`transition-shadow ${ring('body')}`}
-        onFocus={focus('body')}
-        onClick={(e) => {
-          // Only focus 'body' if not clicking inside a sub-section
-          if (!(e.target as HTMLElement).closest('[data-section-id]:not([data-section-id="body"])')) {
-            store.setFocusedSection('body')
-          }
-        }}
-      >
+      <div data-section-id="body">
         <BuilderSection title="Body" headerActions={<AddSectionButton />}>
-          <RichTextEditor
-            content={store.body.content}
-            onChange={store.setBodyContent}
-            font={store.font}
-            onFontChange={store.setFont}
-            fontSize={store.fontSize}
-            onFontSizeChange={store.setFontSize}
-          />
+          <div onFocus={() => store.setFocusedSection('body')} data-field-id="body">
+            <RichTextEditor
+              content={store.body.content}
+              onChange={store.setBodyContent}
+              font={store.font}
+              onFontChange={store.setFont}
+              fontSize={store.fontSize}
+              onFontSizeChange={store.setFontSize}
+            />
+          </div>
           <BodySections />
         </BuilderSection>
       </div>
 
-      <div
-        data-section-id="footer"
-        className={`transition-shadow ${ring('footer')}`}
-        onFocus={focus('footer')}
-        onClick={() => store.setFocusedSection('footer')}
-      >
+      <div data-section-id="footer">
         <BuilderSection
           title="Footer"
           enabled={store.footerConfig.enabled}

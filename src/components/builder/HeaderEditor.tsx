@@ -213,8 +213,10 @@ function TitleContent() {
         type="text"
         value={hc.title.text}
         onChange={(e) => store.updateHeaderTitle({ text: e.target.value })}
+        onFocus={() => store.setFocusedSection('header-title')}
         placeholder="Heading text…"
         className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+        data-field-id="header-title"
       />
       <Row label="Font">
         <select
@@ -261,8 +263,10 @@ function SubtitleContent() {
         type="text"
         value={hc.subtitle.text}
         onChange={(e) => store.updateHeaderSubtitle({ text: e.target.value })}
+        onFocus={() => store.setFocusedSection('header-subtitle')}
         placeholder="Subtitle text…"
         className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+        data-field-id="header-subtitle"
       />
       <Row label="Size">
         <select
@@ -293,8 +297,10 @@ function DatePillContent() {
             type="text"
             value={hc.datePill.text}
             onChange={(e) => store.updateHeaderDatePill({ text: e.target.value })}
+            onFocus={() => store.setFocusedSection('header-datePill')}
             placeholder="e.g. April 2026"
             className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+            data-field-id="header-datePill"
           />
           <Row label="Style">
             <div className="flex border border-gray-400 rounded overflow-hidden">

@@ -10,12 +10,15 @@ const TEMPLATES = ['Narrow', 'Normal', 'Wide'] as const
 const HIGHLIGHT_SHADOW = '0 0 0 2px #3b82f6, 0 0 12px rgba(59, 130, 246, 0.35)'
 
 function applyPreviewHighlight(doc: Document, id: FocusedSectionId | null) {
-  doc.querySelectorAll('[data-section-id]').forEach((el) => {
+  doc.querySelectorAll('[data-section-id], [data-field-id]').forEach((el) => {
     (el as HTMLElement).style.boxShadow = ''
     ;(el as HTMLElement).style.cursor = ''
   })
   if (!id) return
-  const el = doc.querySelector(`[data-section-id="${id}"]`) as HTMLElement | null
+  const el = (
+    doc.querySelector(`[data-field-id="${id}"]`) ??
+    doc.querySelector(`[data-section-id="${id}"]`)
+  ) as HTMLElement | null
   if (el) {
     el.style.boxShadow = HIGHLIGHT_SHADOW
     el.style.cursor = 'pointer'
@@ -31,8 +34,16 @@ function attachPreviewClickListener(
   const prev = (iframe as any).__sectionClickListener
   if (prev) doc.removeEventListener('click', prev)
   const handler = (e: Event) => {
-    const el = (e.target as HTMLElement).closest('[data-section-id]') as HTMLElement | null
-    cb(el ? (el.dataset.sectionId as FocusedSectionId) : null)
+    const target = e.target as HTMLElement
+    const fieldEl = target.closest('[data-field-id]') as HTMLElement | null
+    const sectionEl = target.closest('[data-section-id]') as HTMLElement | null
+    if (fieldEl) {
+      cb(fieldEl.dataset.fieldId ?? null)
+    } else if (sectionEl) {
+      cb(sectionEl.dataset.sectionId ?? null)
+    } else {
+      cb(null)
+    }
   }
   doc.addEventListener('click', handler)
   ;(iframe as any).__sectionClickListener = handler
@@ -100,14 +111,22 @@ export function EmailPreview() {
     // Highlight in preview
     applyPreviewHighlight(doc, focusedSection)
 
-    // Scroll preview to anchor
+    // Scroll preview to the highlighted element (field-level first, then section-level, then anchor)
     if (focusedSection) {
-      doc.getElementById(`preview-${focusedSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const previewEl = (
+        doc.querySelector(`[data-field-id="${CSS.escape(focusedSection)}"]`) ??
+        doc.querySelector(`[data-section-id="${CSS.escape(focusedSection)}"]`) ??
+        doc.getElementById(`preview-${focusedSection}`)
+      ) as HTMLElement | null
+      previewEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
 
-    // Scroll builder panel to the focused section
+    // Scroll builder panel to the focused field or section
     if (focusedSection) {
-      const builderEl = document.querySelector(`[data-section-id="${focusedSection}"]`) as HTMLElement | null
+      const builderEl = (
+        document.querySelector(`[data-field-id="${CSS.escape(focusedSection)}"]`) ??
+        document.querySelector(`[data-section-id="${CSS.escape(focusedSection)}"]`)
+      ) as HTMLElement | null
       builderEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [focusedSection])

@@ -293,8 +293,10 @@ export function FooterEditor() {
           type="text"
           value={fc.brandText.text}
           onChange={(e) => store.updateFooterBrandText({ text: e.target.value })}
+          onFocus={() => store.setFocusedSection('footer-brand')}
           placeholder="Brand name / tagline"
           className="w-full border border-gray-400 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-gray-500"
+          data-field-id="footer-brand"
         />
         <ControlRow label="Size">
           <PillGroup
