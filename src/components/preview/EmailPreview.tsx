@@ -155,12 +155,32 @@ export function EmailPreview() {
 
   const handleDownload = () => {
     const plain = generatePlainText(store)
-    const content = `${emailHtml}\n\n<!-- PLAIN TEXT VERSION:\n${plain}\n-->`
-    const blob = new Blob([content], { type: 'text/html' })
+    const slug = store.campaignName.replace(/\s+/g, '-').toLowerCase()
+    const boundary = `----=_Part_${Date.now()}`
+    const eml = [
+      'MIME-Version: 1.0',
+      `Subject: ${store.campaignName}`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: quoted-printable',
+      '',
+      plain,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      'Content-Transfer-Encoding: quoted-printable',
+      '',
+      emailHtml,
+      '',
+      `--${boundary}--`,
+    ].join('\r\n')
+    const blob = new Blob([eml], { type: 'message/rfc822' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${store.campaignName.replace(/\s+/g, '-').toLowerCase()}.html`
+    a.download = `${slug}.eml`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -190,7 +210,7 @@ export function EmailPreview() {
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Download
+            Download .eml
           </button>
         </div>
       </div>
