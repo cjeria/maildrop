@@ -57,7 +57,7 @@ function inlineParagraphStyles(html: string): string {
   const base = 'margin: 0; padding: 0; line-height: 1.6;'
   return html.replace(/<p(\s[^>]*)?>/gi, (_match, attrs = '') => {
     if (/style\s*=/i.test(attrs)) {
-      return `<p${attrs.replace(/(style\s*=\s*["'])([^"']*)(["'])/i, (_s, open, existing, close) =>
+      return `<p${attrs.replace(/(style\s*=\s*["'])([^"']*)(["'])/i, (_s: string, open: string, existing: string, close: string) =>
         `${open}${base} ${existing}${close}`)}>`
     }
     return `<p${attrs} style="${base}">`
