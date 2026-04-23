@@ -157,6 +157,15 @@ export function EmailPreview() {
     const plain = generatePlainText(store)
     const slug = store.campaignName.replace(/\s+/g, '-').toLowerCase()
     const boundary = `----=_Part_${Date.now()}`
+
+    // Encode a UTF-8 string to base64 with 76-char line wrapping (MIME spec)
+    const toBase64 = (str: string): string => {
+      const bytes = new TextEncoder().encode(str)
+      let binary = ''
+      bytes.forEach(b => { binary += String.fromCharCode(b) })
+      return btoa(binary).match(/.{1,76}/g)?.join('\r\n') ?? btoa(binary)
+    }
+
     const eml = [
       'MIME-Version: 1.0',
       `Subject: ${store.campaignName}`,
@@ -164,15 +173,15 @@ export function EmailPreview() {
       '',
       `--${boundary}`,
       'Content-Type: text/plain; charset="UTF-8"',
-      'Content-Transfer-Encoding: quoted-printable',
+      'Content-Transfer-Encoding: base64',
       '',
-      plain,
+      toBase64(plain),
       '',
       `--${boundary}`,
       'Content-Type: text/html; charset="UTF-8"',
-      'Content-Transfer-Encoding: quoted-printable',
+      'Content-Transfer-Encoding: base64',
       '',
-      emailHtml,
+      toBase64(emailHtml),
       '',
       `--${boundary}--`,
     ].join('\r\n')
