@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { TopBar } from './components/TopBar'
 import { SubBar } from './components/SubBar'
 import { CampaignBuilder } from './components/builder/CampaignBuilder'
@@ -28,6 +29,7 @@ export function App() {
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       {!tosAccepted && <TOSModal onAccept={() => setTosAccepted(true)} />}
 
+      <Analytics />
       <TopBar />
       <SubBar onCampaignSwitch={startLoading} />
 
