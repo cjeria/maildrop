@@ -255,6 +255,12 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       out += `<tr><td${isPreview ? ' data-section-id="body" data-field-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
       topBorder = ''
     }
+    if (body.richText && hasVisibleContent(body.richText)) {
+      const bodyContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
+      const richHtml = processTiptapHtml(body.richText, contentWidth, bodyContextStyles)
+      out += `<tr><td${isPreview ? ' data-field-id="body-rich"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''} padding-top: 0;">${richHtml}</td></tr>\n`
+      topBorder = ''
+    }
 
     for (const section of bodySections) {
       const bg = section.backgroundColor ?? '#ffffff'
@@ -308,6 +314,12 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         const rowBorder = titleRow ? '' : sectionBorder
         sectionRows += titleRow
         sectionRows += `<tr><td style="${rowBorder} padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr>${cells}</tr></table></td></tr>\n`
+      }
+
+      if (section.richText && hasVisibleContent(section.richText)) {
+        const richContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
+        const richHtml = processTiptapHtml(section.richText, contentWidth, richContextStyles)
+        sectionRows += `<tr><td${isPreview ? ` data-field-id="body-${section.id}-rich"` : ''} style="padding: 16px 24px; ${bgStyle} font-family: ${fontFamily}; font-size: ${resolvedFontSize}; line-height: 1.6; color: #1f2937;">${richHtml}</td></tr>\n`
       }
 
       if (sectionRows) {

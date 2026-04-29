@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { ImageUpload } from './ImageUpload'
+import { ColorPicker } from './ColorPicker'
 import type { HeaderConfig, HeaderSectionId } from '../../store/campaignStore'
 import {
   DndContext,
@@ -113,14 +114,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 }
 
 function ColorSwatch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <input
-      type="color"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-6 h-6 rounded border border-gray-400 cursor-pointer p-0 shrink-0"
-    />
-  )
+  return <ColorPicker value={value} onChange={onChange} />
 }
 
 function SortableSection({ id, children }: { id: HeaderSectionId; children: React.ReactNode }) {
@@ -353,11 +347,9 @@ export function HeaderEditor() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <span className="text-xs text-gray-500 w-24 shrink-0">Background</span>
-        <input
-          type="color"
+        <ColorPicker
           value={hc.backgroundColor}
-          onChange={(e) => store.setHeaderBackgroundColor(e.target.value)}
-          className="w-6 h-6 rounded border border-gray-400 cursor-pointer p-0 shrink-0"
+          onChange={(c) => store.setHeaderBackgroundColor(c)}
         />
         <span className="text-xs text-gray-400 font-mono">{hc.backgroundColor}</span>
       </div>

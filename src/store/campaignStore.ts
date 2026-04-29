@@ -21,6 +21,7 @@ export interface ColumnSection {
   layout: '1col' | '2col' | '3col'
   columns: ContentColumn[]
   backgroundColor: string
+  richText?: string
 }
 
 export interface PeopleBodySection {
@@ -30,6 +31,7 @@ export interface PeopleBodySection {
   backgroundColor: string
   peopleLayout: 'horizontal' | 'vertical'
   cards: PersonCard[]
+  richText?: string
 }
 
 export type ContentSection = ColumnSection | PeopleBodySection
@@ -38,6 +40,7 @@ export interface Section {
   content: string
   drafts: Draft[]
   activeDraftId: string | null
+  richText?: string
 }
 
 export interface SignatureSection extends Section {
@@ -207,11 +210,13 @@ export interface CampaignStore {
 
   // Body
   setBodyContent: (content: string) => void
+  setBodyRichText: (content: string) => void
   addBodySection: (layout: '1col' | '2col' | '3col' | 'people') => void
   reorderBodySections: (sections: ContentSection[]) => void
   updateBodySectionTitle: (sectionId: string, title: string) => void
   updateBodySectionBackground: (sectionId: string, color: string) => void
   removeBodySection: (id: string) => void
+  updateBodySectionRichText: (sectionId: string, content: string) => void
   // Column section actions
   updateBodySectionColumn: (sectionId: string, colId: string, fields: Partial<Omit<ContentColumn, 'id'>>) => void
   // People body section actions
@@ -283,7 +288,7 @@ export const defaultState: PersistedState = {
     subtitle: { text: '', fontSize: 'medium', color: '#6b7280' },
     datePill: { text: '', show: false, style: 'outlined', color: '#374151' },
   },
-  body: { content: DEFAULT_BODY_CONTENT, drafts: [], activeDraftId: null },
+  body: { content: DEFAULT_BODY_CONTENT, drafts: [], activeDraftId: null, richText: '' },
   bodySections: [],
   footerConfig: { ...DEFAULT_FOOTER_CONFIG },
   template: 'Normal',
@@ -448,6 +453,9 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
   setBodyContent: (content) =>
     set((state) => ({ body: { ...state.body, content } })),
 
+  setBodyRichText: (richText) =>
+    set((state) => ({ body: { ...state.body, richText } })),
+
   addBodySection: (layout) =>
     set((state) => {
       if (layout === 'people') {
@@ -485,6 +493,11 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
 
   removeBodySection: (id) =>
     set((state) => ({ bodySections: state.bodySections.filter((s) => s.id !== id) })),
+
+  updateBodySectionRichText: (sectionId, richText) =>
+    set((state) => ({
+      bodySections: updateSection(state.bodySections, sectionId, (s) => ({ ...s, richText })),
+    })),
 
   updateBodySectionColumn: (sectionId, colId, fields) =>
     set((state) => ({

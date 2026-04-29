@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
+import { ColorPicker } from '../builder/ColorPicker'
 import { useCampaignStore } from '../../store/campaignStore'
 import type { FocusedSectionId, PersistedState } from '../../store/campaignStore'
 import { generateEmailHtml, generatePlainText } from '../../utils/emailGenerator'
@@ -470,34 +471,19 @@ export function EmailPreview({ onCampaignSwitch }: { onCampaignSwitch?: () => vo
           />
         </div>
 
-        <div className="flex items-center gap-1.5" title="Link color">
+        <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500">Links</label>
-          <input
-            type="color"
-            value={store.linkColor}
-            onChange={(e) => store.setLinkColor(e.target.value)}
-            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
-          />
+          <ColorPicker value={store.linkColor} onChange={store.setLinkColor} title="Link color" />
         </div>
 
-        <div className="flex items-center gap-1.5" title="Page background color">
+        <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500">Page</label>
-          <input
-            type="color"
-            value={store.backgroundColor}
-            onChange={(e) => store.setBackgroundColor(e.target.value)}
-            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
-          />
+          <ColorPicker value={store.backgroundColor} onChange={store.setBackgroundColor} title="Page background" />
         </div>
 
-        <div className="flex items-center gap-1.5" title="Email card background color">
+        <div className="flex items-center gap-1.5">
           <label className="text-xs text-gray-500">Card</label>
-          <input
-            type="color"
-            value={store.cardColor}
-            onChange={(e) => store.setCardColor(e.target.value)}
-            className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
-          />
+          <ColorPicker value={store.cardColor} onChange={store.setCardColor} title="Card background" />
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -510,12 +496,7 @@ export function EmailPreview({ onCampaignSwitch }: { onCampaignSwitch?: () => vo
             <span className={`block w-3 h-3 rounded-full bg-white shadow transition-transform mx-0.5 ${store.borderEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
           </button>
           {store.borderEnabled && (
-            <input
-              type="color"
-              value={store.borderColor}
-              onChange={(e) => store.setBorderColor(e.target.value)}
-              className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0"
-            />
+            <ColorPicker value={store.borderColor} onChange={store.setBorderColor} title="Border color" />
           )}
         </div>
 

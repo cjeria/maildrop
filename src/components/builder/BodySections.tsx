@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { ImageUpload } from './ImageUpload'
 import { RichTextEditor } from './RichTextEditor'
+import { ColorPicker } from './ColorPicker'
 import type { ContentSection, ColumnSection, PeopleBodySection, PersonCard } from '../../store/campaignStore'
 import {
   DndContext,
@@ -387,12 +388,9 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {/* Background color picker */}
-          <input
-            type="color"
+          <ColorPicker
             value={section.backgroundColor}
-            onChange={(e) => store.updateBodySectionBackground(section.id, e.target.value)}
-            className="w-5 h-5 rounded border border-gray-400 cursor-pointer p-0 shrink-0"
+            onChange={(c) => store.updateBodySectionBackground(section.id, c)}
             title="Section background color"
           />
           <button
@@ -431,6 +429,18 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
               ))
             : <PeopleBodySectionEditor section={section} />
           }
+
+          <div onFocus={() => store.setFocusedSection(`body-${section.id}-rich`)} data-field-id={`body-${section.id}-rich`}>
+            <RichTextEditor
+              fullToolbar
+              content={section.richText ?? ''}
+              onChange={(html) => store.updateBodySectionRichText(section.id, html)}
+              font={store.font}
+              onFontChange={store.setFont}
+              fontSize={store.fontSize}
+              onFontSizeChange={store.setFontSize}
+            />
+          </div>
         </div>
       )}
     </div>

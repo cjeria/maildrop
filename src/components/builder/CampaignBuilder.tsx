@@ -61,6 +61,17 @@ export function CampaignBuilder() {
               onFontSizeChange={store.setFontSize}
             />
           </div>
+          <div className="mt-3" onFocus={() => store.setFocusedSection('body-rich')} data-field-id="body-rich">
+            <RichTextEditor
+              fullToolbar
+              content={store.body.richText ?? ''}
+              onChange={store.setBodyRichText}
+              font={store.font}
+              onFontChange={store.setFont}
+              fontSize={store.fontSize}
+              onFontSizeChange={store.setFontSize}
+            />
+          </div>
           <BodySections />
         </BuilderSection>
       </div>

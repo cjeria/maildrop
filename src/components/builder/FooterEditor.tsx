@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { ImageUpload } from './ImageUpload'
+import { ColorPicker } from './ColorPicker'
 import type { SocialPlatform } from '../../store/campaignStore'
 
 type Alignment = 'left' | 'center' | 'right'
@@ -263,11 +264,9 @@ export function FooterEditor() {
         <AlignPicker value={fc.alignment} onChange={setGlobalAlignment} />
       </ControlRow>
       <ControlRow label="Background">
-        <input
-          type="color"
+        <ColorPicker
           value={fc.backgroundColor}
-          onChange={(e) => store.updateFooterConfig({ backgroundColor: e.target.value })}
-          className="w-6 h-6 rounded border border-gray-400 cursor-pointer p-0"
+          onChange={(c) => store.updateFooterConfig({ backgroundColor: c })}
         />
         <span className="text-xs text-gray-400 font-mono">{fc.backgroundColor}</span>
       </ControlRow>
@@ -310,11 +309,9 @@ export function FooterEditor() {
           />
         </ControlRow>
         <ControlRow label="Color">
-          <input
-            type="color"
+          <ColorPicker
             value={fc.brandText.color}
-            onChange={(e) => store.updateFooterBrandText({ color: e.target.value })}
-            className="w-6 h-6 rounded border border-gray-400 cursor-pointer p-0"
+            onChange={(c) => store.updateFooterBrandText({ color: c })}
           />
         </ControlRow>
         <ControlRow label="Spacing">
@@ -353,11 +350,9 @@ export function FooterEditor() {
 
         <div className="border-t border-gray-200 pt-3 space-y-3">
           <ControlRow label="Color">
-            <input
-              type="color"
+            <ColorPicker
               value={fc.socialIcons.color}
-              onChange={(e) => store.updateFooterSocialIcons({ color: e.target.value })}
-              className="w-6 h-6 rounded border border-gray-400 cursor-pointer p-0"
+              onChange={(c) => store.updateFooterSocialIcons({ color: c })}
             />
           </ControlRow>
           <ControlRow label="Size">
