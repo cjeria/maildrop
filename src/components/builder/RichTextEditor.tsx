@@ -292,11 +292,11 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
       const mark = marks.find((m) => m.type.name === 'textStyle')
       return mark?.attrs.fontSize?.replace('px', '') ?? 'Size'
     }
-    let found: string | null = null
+    let found = ''
     state.doc.nodesBetween(from, to, (node) => {
       if (found || !node.isText) return
       const mark = node.marks.find((m) => m.type.name === 'textStyle')
-      if (mark?.attrs.fontSize) found = mark.attrs.fontSize
+      if (mark?.attrs.fontSize) found = String(mark.attrs.fontSize)
     })
     return found ? found.replace('px', '') : 'Size'
   }
