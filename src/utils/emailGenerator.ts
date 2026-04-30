@@ -159,7 +159,7 @@ function placeholderRow(label: string, borderStyle = 'border-top: 1px solid #e5e
 
 export function generateEmailHtml(state: StoreState, options: { isPreview?: boolean } = {}): string {
   const { isPreview = false } = options
-  const { recipientName, link, selectedAddress, headerImage, headerSectionOrder, headerConfig, body, bodySections, footerConfig, template, font, fontSize, cornerRadius, backgroundColor, cardColor, borderEnabled, borderColor, linkColor } = state
+  const { recipientName, link, selectedAddress, headerImage, headerSectionOrder, headerConfig, bodySections, footerConfig, template, font, fontSize, cornerRadius, backgroundColor, cardColor, borderEnabled, borderColor, linkColor } = state
 
   const fontSizePx: Record<string, string> = { small: '10px', normal: '14px', large: '18px', huge: '32px' }
   const resolvedFontSize = fontSizePx[fontSize] ?? '14px'
@@ -172,7 +172,6 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   const divider = `1px solid ${borderColor}`
 
   const resolve = (html: string) => resolveVars(html, recipientName, link, selectedAddress)
-  const sectionStyle = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; line-height: 1.6; color: #1f2937; padding: 24px 24px;`
 
   // Returns true if an HTML string (possibly from TipTap) has visible text content
   const hasVisibleContent = (html: string): boolean =>
@@ -182,18 +181,6 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   const processTiptapHtml = (html: string, width: number, contextStyles = ''): string => {
     const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width), contextStyles)
     return preserveSpaces(inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))
-  }
-
-  // Renders a section title (HTML or plain text) into a <tr> row, or '' if empty
-  const renderSectionTitleRow = (title: string, border: string, bg: string, fieldId?: string): string => {
-    if (!title) return ''
-    const isHtml = /<[a-z][\s\S]*>/i.test(title)
-    if (isHtml && !hasVisibleContent(title)) return ''
-    const inner = isHtml
-      ? `<div style="font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280; line-height: 1.3;">${processTiptapHtml(title, contentWidth, `font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;`)}</div>`
-      : `<p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">${escapeHtml(title)}</p>`
-    const fieldAttr = fieldId && isPreview ? ` data-field-id="${fieldId}"` : ''
-    return `<tr><td${fieldAttr} style="padding: 18px 24px 0; ${border} ${bg}">${inner}</td></tr>\n`
   }
 
   // Per-section renderers — each receives whether it is the first visible row
@@ -246,21 +233,6 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
 
   const renderBody = (topBorder: string): string => {
     let out = ''
-    if (body.content) {
-      const bodyContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
-      const bodyHtml = preserveSpaces(
-        inlineParagraphStyles(processInlineImages(resolve(body.content), contentWidth), bodyContextStyles)
-          .replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
-      )
-      out += `<tr><td${isPreview ? ' data-section-id="body" data-field-id="body"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''}">${bodyHtml}</td></tr>\n`
-      topBorder = ''
-    }
-    if (body.richText && hasVisibleContent(body.richText)) {
-      const bodyContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
-      const richHtml = processTiptapHtml(body.richText, contentWidth, bodyContextStyles)
-      out += `<tr><td${isPreview ? ' data-field-id="body-rich"' : ''} style="${sectionStyle}${topBorder ? ` border-top: ${divider};` : ''} padding-top: 0;">${richHtml}</td></tr>\n`
-      topBorder = ''
-    }
 
     for (const section of bodySections) {
       const bg = section.backgroundColor ?? '#ffffff'
@@ -270,56 +242,52 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
       // Buffer this section's rows so we can optionally wrap in <tbody data-section-id> for preview
       let sectionRows = ''
 
+      const richContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
+      const richStyle = `padding: 24px; ${bgStyle} font-family: ${fontFamily}; font-size: ${resolvedFontSize}; line-height: 1.6; color: #1f2937;`
+
       if (section.type === 'people') {
         const ps = section as PeopleBodySection
+
+        // Section rich text (intro/description above people cards)
+        if (ps.richText && hasVisibleContent(ps.richText)) {
+          const richHtml = processTiptapHtml(ps.richText, contentWidth, richContextStyles)
+          sectionRows += `<tr><td${isPreview ? ` data-field-id="body-${section.id}-rich"` : ''} style="${sectionBorder} ${richStyle}">${richHtml}</td></tr>\n`
+        }
+
+        const cardsBorder = sectionRows ? '' : sectionBorder
         if (ps.cards.length === 0 && isPreview) {
           const dummy: PersonCard = { id: '__placeholder__', name: 'Jane Smith', title: 'Senior Account Executive', location: 'New York, NY', phone: '+1 (212) 555-0182', email: 'jane.smith@example.com', bioHref: 'https://example.com/bio/jane-smith', imageUrl: 'https://placehold.co/120x120/e5e7eb/9ca3af?text=Photo' }
           const dummyCellPx = Math.floor(maxWidthNum / 4)
-          sectionRows += renderSectionTitleRow(ps.title || 'People', sectionBorder, bgStyle) || `<tr><td style="padding: 18px 24px 0; ${sectionBorder} ${bgStyle}"><p style="margin: 0; font-family: ${fontFamily}; font-size: 24px; font-weight: 600; color: #6b7280;">People</p></td></tr>\n`
-          sectionRows += `<tr><td style="padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
+          sectionRows += `<tr><td style="padding: 0; ${cardsBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
         } else if (ps.cards.length > 0) {
-          const titleRow = renderSectionTitleRow(ps.title, sectionBorder, bgStyle, `body-${section.id}-title`)
-          const rowBorder = titleRow ? '' : sectionBorder
-          sectionRows += titleRow
-          sectionRows += `<tr><td style="padding: 0; ${rowBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
+          sectionRows += `<tr><td style="padding: 0; ${cardsBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
         }
       } else {
         const cs = section as ColumnSection
-        const colCount = cs.columns.length
-        const gap = 16
-        const colWidth = Math.floor((contentWidth - gap * (colCount - 1)) / colCount)
-        const titleRow = renderSectionTitleRow(cs.title, sectionBorder, bgStyle, `body-${section.id}-title`)
-        const cells = cs.columns.map((col, i) => {
-          const paddingLeft = i === 0 ? 24 : gap / 2
-          const paddingRight = i === colCount - 1 ? 24 : gap / 2
-          let content = ''
-          if (col.imageUrl) content += `<img src="${escapeHtml(col.imageUrl)}" width="${colWidth}" height="200" alt="" style="display: block; width: ${colWidth}px; height: 200px; object-fit: cover; margin-bottom: 24px;" />`
-          if (col.title) {
-            const isTitleHtml = /<[a-z][\s\S]*>/i.test(col.title)
-            if (isTitleHtml ? hasVisibleContent(col.title) : col.title.trim()) {
-              content += isTitleHtml
-                ? `<div${isPreview ? ` data-field-id="col-${col.id}-title"` : ''} style="font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3; margin-bottom: 12px;">${processTiptapHtml(col.title, colWidth, `font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937;`)}</div>`
-                : `<p style="margin: 0 0 12px; font-family: ${fontFamily}; font-size: 16px; font-weight: bold; color: #1f2937; line-height: 1.3;">${escapeHtml(col.title)}</p>`
-            }
-          }
-          if (col.subtext) {
-            const isHtml = /<[a-z][\s\S]*>/i.test(col.subtext)
-            const subtextContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563;`
-            content += isHtml
-              ? `<div${isPreview ? ` data-field-id="col-${col.id}-subtext"` : ''} style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${preserveSpaces(inlineParagraphStyles(processInlineImages(resolve(col.subtext), colWidth), subtextContextStyles).replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))}</div>`
-              : `<p style="margin: 0; font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #4b5563; line-height: 1.6;">${escapeHtml(col.subtext).replace(/\n/g, '<br>')}</p>`
-          }
-          return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content || '&nbsp;'}</td>`
-        }).join('')
-        const rowBorder = titleRow ? '' : sectionBorder
-        sectionRows += titleRow
-        sectionRows += `<tr><td style="${rowBorder} padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr>${cells}</tr></table></td></tr>\n`
-      }
 
-      if (section.richText && hasVisibleContent(section.richText)) {
-        const richContextStyles = `font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937;`
-        const richHtml = processTiptapHtml(section.richText, contentWidth, richContextStyles)
-        sectionRows += `<tr><td${isPreview ? ` data-field-id="body-${section.id}-rich"` : ''} style="padding: 16px 24px; ${bgStyle} font-family: ${fontFamily}; font-size: ${resolvedFontSize}; line-height: 1.6; color: #1f2937;">${richHtml}</td></tr>\n`
+        if (cs.layout === '1col') {
+          // 1-column: render section richText
+          if (cs.richText && hasVisibleContent(cs.richText)) {
+            const richHtml = processTiptapHtml(cs.richText, contentWidth, richContextStyles)
+            sectionRows += `<tr><td${isPreview ? ` data-field-id="body-${section.id}-rich"` : ''} style="${sectionBorder} ${richStyle}">${richHtml}</td></tr>\n`
+          } else if (isPreview) {
+            sectionRows += `<tr><td style="${sectionBorder} padding: 24px; ${bgStyle} color: #d1d5db; font-style: italic; font-size: 13px; font-family: ${fontFamily};">Empty section</td></tr>\n`
+          }
+        } else {
+          // 2/3-column: render per-column richText side by side
+          const colCount = cs.columns.length
+          const gap = 16
+          const colWidth = Math.floor((contentWidth - gap * (colCount - 1)) / colCount)
+          const cells = cs.columns.map((col, i) => {
+            const paddingLeft = i === 0 ? 24 : gap / 2
+            const paddingRight = i === colCount - 1 ? 24 : gap / 2
+            const content = col.richText && hasVisibleContent(col.richText)
+              ? `<div${isPreview ? ` data-field-id="col-${col.id}-rich"` : ''} style="font-family: ${fontFamily}; font-size: ${resolvedFontSize}; color: #1f2937; line-height: 1.6;">${processTiptapHtml(col.richText, colWidth, richContextStyles)}</div>`
+              : '&nbsp;'
+            return `<td valign="top" width="${colWidth}" style="padding: 24px ${paddingRight}px 24px ${paddingLeft}px; width: ${colWidth}px; ${bgStyle}">${content}</td>`
+          }).join('')
+          sectionRows += `<tr><td style="${sectionBorder} padding: 0; ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr>${cells}</tr></table></td></tr>\n`
+        }
       }
 
       if (sectionRows) {

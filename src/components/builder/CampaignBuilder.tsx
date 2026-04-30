@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
 import { BuilderSection } from './BuilderSection'
-import { RichTextEditor } from './RichTextEditor'
 import { BodySections, AddSectionButton } from './BodySections'
 import { HeaderEditor } from './HeaderEditor'
 import { FooterEditor } from './FooterEditor'
@@ -51,27 +50,6 @@ export function CampaignBuilder() {
 
       <div data-section-id="body">
         <BuilderSection title="Body" headerActions={<AddSectionButton />}>
-          <div onFocus={() => store.setFocusedSection('body')} data-field-id="body">
-            <RichTextEditor
-              content={store.body.content}
-              onChange={store.setBodyContent}
-              font={store.font}
-              onFontChange={store.setFont}
-              fontSize={store.fontSize}
-              onFontSizeChange={store.setFontSize}
-            />
-          </div>
-          <div className="mt-3" onFocus={() => store.setFocusedSection('body-rich')} data-field-id="body-rich">
-            <RichTextEditor
-              fullToolbar
-              content={store.body.richText ?? ''}
-              onChange={store.setBodyRichText}
-              font={store.font}
-              onFontChange={store.setFont}
-              fontSize={store.fontSize}
-              onFontSizeChange={store.setFontSize}
-            />
-          </div>
           <BodySections />
         </BuilderSection>
       </div>

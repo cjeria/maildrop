@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useCampaignStore } from '../../store/campaignStore'
-import { ImageUpload } from './ImageUpload'
 import { RichTextEditor } from './RichTextEditor'
 import { ColorPicker } from './ColorPicker'
 import type { ContentSection, ColumnSection, PeopleBodySection, PersonCard } from '../../store/campaignStore'
@@ -19,6 +18,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { ImageUpload } from './ImageUpload'
 
 // ── Type guards ───────────────────────────────────────────────────────────────
 
@@ -106,8 +106,6 @@ function ColumnEditor({
   total: number
 }) {
   const store = useCampaignStore()
-  const update = (fields: Parameters<typeof store.updateBodySectionColumn>[2]) =>
-    store.updateBodySectionColumn(sectionId, column.id, fields)
 
   return (
     <div className="space-y-2">
@@ -116,21 +114,11 @@ function ColumnEditor({
           Column {index + 1}
         </p>
       )}
-      <ImageUpload
-        imageUrl={column.imageUrl}
-        onChange={(url) => update({ imageUrl: url })}
-        label="column image"
-      />
-      <div onFocus={() => store.setFocusedSection(`col-${column.id}-title`)} data-field-id={`col-${column.id}-title`}>
+      <div onFocus={() => store.setFocusedSection(`col-${column.id}-rich`)} data-field-id={`col-${column.id}-rich`}>
         <RichTextEditor
-          content={column.title}
-          onChange={(html) => update({ title: html })}
-        />
-      </div>
-      <div onFocus={() => store.setFocusedSection(`col-${column.id}-subtext`)} data-field-id={`col-${column.id}-subtext`}>
-        <RichTextEditor
-          content={column.subtext}
-          onChange={(html) => update({ subtext: html })}
+          fullToolbar
+          content={column.richText}
+          onChange={(html) => store.updateBodySectionColumn(sectionId, column.id, { richText: html })}
           font={store.font}
           onFontChange={store.setFont}
           fontSize={store.fontSize}
@@ -141,7 +129,7 @@ function ColumnEditor({
   )
 }
 
-// ── People section editor (inline, scoped to a body section) ──────────────────
+// ── People section editor ─────────────────────────────────────────────────────
 
 function validateCard(card: PersonCard): Record<string, string> {
   const errors: Record<string, string> = {}
@@ -331,7 +319,7 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
   )
 }
 
-// ── Section editor (wraps both types) ─────────────────────────────────────────
+// ── Section editor ────────────────────────────────────────────────────────────
 
 function SectionEditor({ section, index }: { section: ContentSection; index: number }) {
   const store = useCampaignStore()
@@ -410,15 +398,21 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
 
       {!collapsed && (
         <div className="p-4 space-y-5">
-          <div onFocus={() => store.setFocusedSection(`body-${section.id}-title`)} data-field-id={`body-${section.id}-title`}>
-            <RichTextEditor
-              content={section.title}
-              onChange={(html) => store.updateBodySectionTitle(section.id, html)}
-            />
-          </div>
-
-          {isColumnSection(section)
-            ? section.columns.map((col, i) => (
+          {isColumnSection(section) ? (
+            section.layout === '1col' ? (
+              <div onFocus={() => store.setFocusedSection(`body-${section.id}-rich`)} data-field-id={`body-${section.id}-rich`}>
+                <RichTextEditor
+                  fullToolbar
+                  content={section.richText}
+                  onChange={(html) => store.updateBodySectionRichText(section.id, html)}
+                  font={store.font}
+                  onFontChange={store.setFont}
+                  fontSize={store.fontSize}
+                  onFontSizeChange={store.setFontSize}
+                />
+              </div>
+            ) : (
+              section.columns.map((col, i) => (
                 <ColumnEditor
                   key={col.id}
                   sectionId={section.id}
@@ -427,20 +421,23 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
                   total={section.columns.length}
                 />
               ))
-            : <PeopleBodySectionEditor section={section} />
-          }
-
-          <div onFocus={() => store.setFocusedSection(`body-${section.id}-rich`)} data-field-id={`body-${section.id}-rich`}>
-            <RichTextEditor
-              fullToolbar
-              content={section.richText ?? ''}
-              onChange={(html) => store.updateBodySectionRichText(section.id, html)}
-              font={store.font}
-              onFontChange={store.setFont}
-              fontSize={store.fontSize}
-              onFontSizeChange={store.setFontSize}
-            />
-          </div>
+            )
+          ) : (
+            <>
+              <div onFocus={() => store.setFocusedSection(`body-${section.id}-rich`)} data-field-id={`body-${section.id}-rich`}>
+                <RichTextEditor
+                  fullToolbar
+                  content={section.richText}
+                  onChange={(html) => store.updateBodySectionRichText(section.id, html)}
+                  font={store.font}
+                  onFontChange={store.setFont}
+                  fontSize={store.fontSize}
+                  onFontSizeChange={store.setFontSize}
+                />
+              </div>
+              <PeopleBodySectionEditor section={section as PeopleBodySection} />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -451,6 +448,7 @@ function SectionEditor({ section, index }: { section: ContentSection; index: num
 
 export function BodySections() {
   const store = useCampaignStore()
+  const [showModal, setShowModal] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -465,22 +463,37 @@ export function BodySections() {
     store.reorderBodySections(arrayMove(store.bodySections, oldIndex, newIndex))
   }
 
-  if (store.bodySections.length === 0) return null
-
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={store.bodySections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-        <div>
-          {store.bodySections.map((section, i) => (
-            <SectionEditor key={section.id} section={section} index={i} />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={store.bodySections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div>
+            {store.bodySections.map((section, i) => (
+              <SectionEditor key={section.id} section={section} index={i} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      <button
+        type="button"
+        onClick={() => setShowModal(true)}
+        className="mt-3 w-full text-xs py-1.5 border border-dashed border-gray-400 rounded-md text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+      >
+        + Add section
+      </button>
+
+      {showModal && (
+        <AddSectionModal
+          onClose={() => setShowModal(false)}
+          onAdd={(layout) => store.addBodySection(layout)}
+        />
+      )}
+    </>
   )
 }
 
-// ── Add section button ────────────────────────────────────────────────────────
+// ── Add section button (for header) ──────────────────────────────────────────
 
 export function AddSectionButton() {
   const [showModal, setShowModal] = useState(false)

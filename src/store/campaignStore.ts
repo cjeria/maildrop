@@ -9,29 +9,25 @@ export interface Draft {
 
 export interface ContentColumn {
   id: string
-  imageUrl: string
-  title: string
-  subtext: string
+  richText: string
 }
 
 export interface ColumnSection {
   id: string
   type: 'columns'
-  title: string
   layout: '1col' | '2col' | '3col'
   columns: ContentColumn[]
   backgroundColor: string
-  richText?: string
+  richText: string
 }
 
 export interface PeopleBodySection {
   id: string
   type: 'people'
-  title: string
   backgroundColor: string
   peopleLayout: 'horizontal' | 'vertical'
   cards: PersonCard[]
-  richText?: string
+  richText: string
 }
 
 export type ContentSection = ColumnSection | PeopleBodySection
@@ -213,7 +209,6 @@ export interface CampaignStore {
   setBodyRichText: (content: string) => void
   addBodySection: (layout: '1col' | '2col' | '3col' | 'people') => void
   reorderBodySections: (sections: ContentSection[]) => void
-  updateBodySectionTitle: (sectionId: string, title: string) => void
   updateBodySectionBackground: (sectionId: string, color: string) => void
   removeBodySection: (id: string) => void
   updateBodySectionRichText: (sectionId: string, content: string) => void
@@ -272,6 +267,15 @@ const DEFAULT_BODY_CONTENT =
   '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>'
 
 
+const makeDefaultSection = (): ColumnSection => ({
+  id: nanoid(),
+  type: 'columns',
+  layout: '1col',
+  columns: [{ id: nanoid(), richText: '' }],
+  backgroundColor: '#ffffff',
+  richText: '',
+})
+
 export const defaultState: PersistedState = {
   campaignName: 'Untitled Campaign',
   recipientName: '',
@@ -289,7 +293,7 @@ export const defaultState: PersistedState = {
     datePill: { text: '', show: false, style: 'outlined', color: '#374151' },
   },
   body: { content: DEFAULT_BODY_CONTENT, drafts: [], activeDraftId: null, richText: '' },
-  bodySections: [],
+  bodySections: [makeDefaultSection()],
   footerConfig: { ...DEFAULT_FOOTER_CONFIG },
   template: 'Normal',
   font: 'Arial',
@@ -305,19 +309,40 @@ export const defaultState: PersistedState = {
 function migrateSections(raw: unknown[]): ContentSection[] {
   return raw.map((s: unknown) => {
     const section = s as Record<string, unknown>
-    // Old column sections have no `type` field
     if (!section.type || section.type === 'columns') {
+      const oldCols = (section.columns as Record<string, unknown>[] | undefined) ?? []
+      const columns: ContentColumn[] = oldCols.map((c) => ({
+        id: String(c.id ?? nanoid()),
+        richText: String(c.richText ?? ''),
+      }))
       return {
+        id: String(section.id ?? nanoid()),
         type: 'columns',
-        backgroundColor: '#ffffff',
-        ...section,
+        layout: (section.layout as ColumnSection['layout']) ?? '1col',
+        columns,
+        backgroundColor: String(section.backgroundColor ?? '#ffffff'),
+        richText: String(section.richText ?? ''),
       } as ColumnSection
     }
-    // People body sections
     if (section.type === 'people') {
+      const oldCards = (section.cards as Record<string, unknown>[] | undefined) ?? []
+      const cards: PersonCard[] = oldCards.map((c) => ({
+        id: String(c.id ?? nanoid()),
+        name: String(c.name ?? ''),
+        title: String(c.title ?? ''),
+        location: String(c.location ?? ''),
+        phone: String(c.phone ?? ''),
+        email: String(c.email ?? ''),
+        bioHref: String(c.bioHref ?? ''),
+        imageUrl: String(c.imageUrl ?? ''),
+      }))
       return {
-        backgroundColor: '#ffffff',
-        ...section,
+        id: String(section.id ?? nanoid()),
+        type: 'people',
+        backgroundColor: String(section.backgroundColor ?? '#ffffff'),
+        peopleLayout: (section.peopleLayout as PeopleBodySection['peopleLayout']) ?? 'vertical',
+        cards,
+        richText: String(section.richText ?? ''),
       } as PeopleBodySection
     }
     return section as unknown as ContentSection
@@ -386,9 +411,11 @@ function loadPersistedState(): Partial<PersistedState> {
         },
       }
     }
-    // Migration: body sections — add type + backgroundColor fields
-    if (parsed.bodySections) {
+    // Migration: body sections
+    if (parsed.bodySections && (parsed.bodySections as unknown[]).length > 0) {
       parsed.bodySections = migrateSections(parsed.bodySections as unknown[])
+    } else {
+      parsed.bodySections = [makeDefaultSection()]
     }
 
     return parsed
@@ -462,29 +489,24 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
         const section: PeopleBodySection = {
           id: nanoid(),
           type: 'people',
-          title: '',
           backgroundColor: '#ffffff',
           peopleLayout: 'vertical',
           cards: [],
+          richText: '',
         }
         return { bodySections: [...state.bodySections, section] }
       }
       const colCount = layout === '1col' ? 1 : layout === '2col' ? 2 : 3
       const columns: ContentColumn[] = Array.from({ length: colCount }, () => ({
-        id: nanoid(), imageUrl: '', title: '', subtext: '',
+        id: nanoid(), richText: '',
       }))
       const section: ColumnSection = {
-        id: nanoid(), type: 'columns', title: '', layout, columns, backgroundColor: '#ffffff',
+        id: nanoid(), type: 'columns', layout, columns, backgroundColor: '#ffffff', richText: '',
       }
       return { bodySections: [...state.bodySections, section] }
     }),
 
   reorderBodySections: (sections) => set({ bodySections: sections }),
-
-  updateBodySectionTitle: (sectionId, title) =>
-    set((state) => ({
-      bodySections: updateSection(state.bodySections, sectionId, (s) => ({ ...s, title })),
-    })),
 
   updateBodySectionBackground: (sectionId, color) =>
     set((state) => ({
@@ -620,7 +642,7 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
 
   resetStore: () => {
     localStorage.removeItem('maildrop_state')
-    set(defaultState)
+    set({ ...defaultState, bodySections: [makeDefaultSection()] })
   },
   loadState: (data) => set((state) => ({ ...state, ...data })),
 }))
