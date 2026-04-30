@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCampaignStore, defaultState } from '../store/campaignStore'
 import { useSlotsStore } from '../store/slotsStore'
+import type { CampaignSlot } from '../store/slotsStore'
+import type { PersistedState } from '../store/campaignStore'
 
 function IconTooltip({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -32,7 +34,9 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
   }, [])
 
   const [newCampaignModal, setNewCampaignModal] = useState(false)
+  const [newCampaignStep, setNewCampaignStep] = useState<'choose' | 'name'>('choose')
   const [newCampaignName, setNewCampaignName] = useState('')
+  const importJsonRef = useRef<HTMLInputElement>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [duplicateSourceId, setDuplicateSourceId] = useState<string | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
@@ -70,6 +74,43 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
     store.loadState(newState)
     setNewCampaignName('')
     setNewCampaignModal(false)
+  }
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const raw = event.target?.result as string
+        const parsed = JSON.parse(raw) as unknown
+        if (
+          typeof parsed !== 'object' || parsed === null ||
+          typeof (parsed as Record<string, unknown>).name !== 'string' ||
+          typeof (parsed as Record<string, unknown>).savedAt !== 'number' ||
+          typeof (parsed as Record<string, unknown>).state !== 'object' ||
+          (parsed as Record<string, unknown>).state === null ||
+          typeof ((parsed as Record<string, unknown>).state as Record<string, unknown>).campaignName !== 'string'
+        ) {
+          alert("Couldn't import campaign — file may be corrupted.")
+          return
+        }
+        const incoming = parsed as CampaignSlot
+        let name = incoming.name.trim() || 'Imported Campaign'
+        if (slots.slots.some((s) => s.name === name)) name = `${name} (imported)`
+        const newState: PersistedState = { ...incoming.state, campaignName: name }
+        const id = slots.saveSlot(name, newState)
+        onCampaignSwitch?.()
+        slots.setActiveSlot(id)
+        store.loadState(newState)
+        setNewCampaignModal(false)
+      } catch {
+        alert("Couldn't import campaign — file may be corrupted.")
+      }
+    }
+    reader.onerror = () => alert("Couldn't import campaign — file may be corrupted.")
+    reader.readAsText(file)
   }
 
   const handleConfirmDelete = () => {
@@ -205,8 +246,9 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
         )}
 
         {/* New Campaign primary button */}
+        <input ref={importJsonRef} type="file" accept=".json" className="hidden" onChange={handleImportJson} />
         <button
-          onClick={() => { setNewCampaignName(''); setNewCampaignModal(true) }}
+          onClick={() => { setNewCampaignName(''); setNewCampaignStep('choose'); setNewCampaignModal(true) }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-900 text-white rounded hover:bg-gray-700 transition-colors"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -242,35 +284,94 @@ export function SubBar({ onCampaignSwitch }: { onCampaignSwitch?: () => void }) 
       {/* New campaign modal */}
       {newCampaignModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-80">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">New campaign</h2>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Campaign name"
-              value={newCampaignName}
-              onChange={(e) => setNewCampaignName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateNewCampaign()
-                if (e.key === 'Escape') setNewCampaignModal(false)
-              }}
-              className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setNewCampaignModal(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateNewCampaign}
-                disabled={!newCampaignName.trim()}
-                className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50"
-              >
-                Create
-              </button>
-            </div>
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            {newCampaignStep === 'choose' ? (
+              <>
+                <h2 className="text-base font-semibold text-gray-900 mb-5">New campaign</h2>
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setNewCampaignStep('name')}
+                    className="flex flex-col items-center gap-3 p-5 border-2 border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                  >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-500">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="11" x2="12" y2="17" />
+                      <line x1="9" y1="14" x2="15" y2="14" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Create new campaign</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Start from a blank template</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { importJsonRef.current?.click() }}
+                    className="flex flex-col items-center gap-3 p-5 border-2 border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                  >
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-500">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Upload JSON template</p>
+                      <p className="text-xs text-gray-500 mt-0.5">.json files only</p>
+                    </div>
+                  </button>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setNewCampaignModal(false)}
+                    className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setNewCampaignStep('choose')}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 mb-4 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 12H5M12 5l-7 7 7 7" />
+                  </svg>
+                  Back
+                </button>
+                <h2 className="text-base font-semibold text-gray-900 mb-4">Create new campaign</h2>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Campaign name"
+                  value={newCampaignName}
+                  onChange={(e) => setNewCampaignName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateNewCampaign()
+                    if (e.key === 'Escape') setNewCampaignModal(false)
+                  }}
+                  className="w-full border border-gray-400 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-gray-500"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setNewCampaignModal(false)}
+                    className="px-3 py-1.5 text-sm text-gray-600 border border-gray-400 rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateNewCampaign}
+                    disabled={!newCampaignName.trim()}
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Create
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
