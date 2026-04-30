@@ -13,6 +13,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { uploadToCloudinary } from '../../utils/cloudinary'
 import { ColorPicker } from './ColorPicker'
+import { ImageCropModal } from './ImageCropModal'
 
 const FONT_FAMILIES = ['Arial', 'Avenir', 'Georgia', 'Helvetica', 'Times New Roman', 'Trebuchet MS', 'Verdana']
 
@@ -191,6 +192,8 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
   const [imageToolbar, setImageToolbar] = useState<{ top: number; left: number; width: number } | null>(null)
   const [imageLinkHref, setImageLinkHref] = useState('')
   const imagePosRef = useRef<number | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const pendingFileRef = useRef<File | null>(null)
 
   const editor = useEditor({
     extensions: [
@@ -267,6 +270,33 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
   }, [editor])
 
+  const openCropForFile = useCallback((file: File) => {
+    pendingFileRef.current = file
+    const reader = new FileReader()
+    reader.onload = () => setCropSrc(reader.result as string)
+    reader.readAsDataURL(file)
+  }, [])
+
+  const handleCropDone = useCallback(async (url: string) => {
+    setCropSrc(null)
+    pendingFileRef.current = null
+    if (!editor) return
+    // If we're replacing an existing image (imagePosRef set), update it in place
+    if (imagePosRef.current !== null) {
+      const pos = imagePosRef.current
+      const node = editor.state.doc.nodeAt(pos)
+      if (node?.type.name === 'image') {
+        editor.chain().command(({ tr }) => {
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, src: url })
+          return true
+        }).run()
+        setImageToolbar(null)
+        return
+      }
+    }
+    editor.chain().focus().setImage({ src: url } as never).run()
+  }, [editor])
+
   const insertImage = useCallback(async (file: File) => {
     if (!editor) return
     setUploadingImage(true)
@@ -279,6 +309,7 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
       setUploadingImage(false)
     }
   }, [editor])
+  void insertImage // kept for drag-drop fallback
 
 
   if (!editor) return null
@@ -341,6 +372,18 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
             <button onMouseDown={(e) => e.preventDefault()} onClick={() => applyImageLink(imageLinkHref)}
               className="text-xs px-2 py-0.5 bg-white text-gray-900 rounded cursor-pointer hover:bg-gray-200 transition-colors shrink-0 font-medium">
               Apply
+            </button>
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (imagePosRef.current === null) return
+                const node = editor.state.doc.nodeAt(imagePosRef.current)
+                if (node?.attrs.src) setCropSrc(node.attrs.src)
+              }}
+              className="text-xs px-2 py-0.5 bg-gray-700 text-white rounded cursor-pointer hover:bg-gray-600 transition-colors shrink-0"
+              title="Crop image"
+            >
+              Crop
             </button>
             {imageLinkHref && (
               <button onMouseDown={(e) => e.preventDefault()} onClick={() => { setImageLinkHref(''); applyImageLink('') }}
@@ -578,7 +621,7 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) insertImage(file)
+            if (file) openCropForFile(file)
             e.target.value = ''
           }}
         />
@@ -633,6 +676,14 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
 
         <EditorContent editor={editor} />
       </div>
+
+      {cropSrc && (
+        <ImageCropModal
+          imageSrc={cropSrc}
+          onDone={handleCropDone}
+          onCancel={() => { setCropSrc(null); pendingFileRef.current = null }}
+        />
+      )}
     </div>
   )
 }
