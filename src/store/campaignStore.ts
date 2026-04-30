@@ -25,7 +25,8 @@ export interface PeopleBodySection {
   id: string
   type: 'people'
   backgroundColor: string
-  peopleLayout: 'horizontal' | 'vertical'
+  cardLayout: 'side-by-side' | 'stacked'
+  groupLayout: 'side-by-side' | 'stacked'
   cards: PersonCard[]
   richText: string
 }
@@ -215,7 +216,8 @@ export interface CampaignStore {
   // Column section actions
   updateBodySectionColumn: (sectionId: string, colId: string, fields: Partial<Omit<ContentColumn, 'id'>>) => void
   // People body section actions
-  setPeopleSectionLayout: (sectionId: string, layout: 'horizontal' | 'vertical') => void
+  setPeopleCardLayout: (sectionId: string, layout: 'side-by-side' | 'stacked') => void
+  setPeopleGroupLayout: (sectionId: string, layout: 'side-by-side' | 'stacked') => void
   addPersonCardToSection: (sectionId: string) => void
   duplicatePersonCardToSection: (sectionId: string, cardId: string) => void
   updatePersonCardInSection: (sectionId: string, cardId: string, fields: Partial<Omit<PersonCard, 'id'>>) => void
@@ -340,7 +342,8 @@ function migrateSections(raw: unknown[]): ContentSection[] {
         id: String(section.id ?? nanoid()),
         type: 'people',
         backgroundColor: String(section.backgroundColor ?? '#ffffff'),
-        peopleLayout: (section.peopleLayout as PeopleBodySection['peopleLayout']) ?? 'vertical',
+        cardLayout: 'side-by-side' as const,
+        groupLayout: 'side-by-side' as const,
         cards,
         richText: String(section.richText ?? ''),
       } as PeopleBodySection
@@ -490,7 +493,8 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
           id: nanoid(),
           type: 'people',
           backgroundColor: '#ffffff',
-          peopleLayout: 'vertical',
+          cardLayout: 'side-by-side',
+          groupLayout: 'side-by-side',
           cards: [],
           richText: '',
         }
@@ -529,10 +533,17 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
       })),
     })),
 
-  setPeopleSectionLayout: (sectionId, layout) =>
+  setPeopleCardLayout: (sectionId, cardLayout) =>
     set((state) => ({
       bodySections: updateSection<PeopleBodySection>(state.bodySections, sectionId, (s) => ({
-        ...s, peopleLayout: layout,
+        ...s, cardLayout,
+      })),
+    })),
+
+  setPeopleGroupLayout: (sectionId, groupLayout) =>
+    set((state) => ({
+      bodySections: updateSection<PeopleBodySection>(state.bodySections, sectionId, (s) => ({
+        ...s, groupLayout,
       })),
     })),
 

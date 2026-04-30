@@ -98,59 +98,85 @@ function processInlineImages(html: string, contentWidth: number): string {
   })
 }
 
-function renderPersonCard(card: PersonCard, fontFamily: string, layout: 'horizontal' | 'vertical', linkColor: string, photoWidth: number): string {
+function renderPersonCard(
+  card: PersonCard,
+  fontFamily: string,
+  cardLayout: 'side-by-side' | 'stacked',
+  linkColor: string,
+  cardWidth: number,
+): string {
   const nameEsc = escapeHtml(card.name)
   const p = (style: string, content: string) =>
     `<p style="margin: 0; line-height: 1.4; word-break: break-word; overflow-wrap: break-word; ${style}">${content}</p>`
 
-  const textBlock = `
-    ${card.name ? p(`font-weight: bold; color: #1a3a4a; font-family: ${fontFamily}; font-size: 14px;`, nameEsc) : ''}
-    ${card.title ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.title)) : ''}
-    ${card.location ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.location)) : ''}
-    ${card.phone ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.phone)) : ''}
-    ${card.email ? p(`font-size: 13px;`, `<a href="mailto:${escapeHtml(card.email)}" style="color: ${linkColor}; text-decoration: none; font-family: ${fontFamily};">${escapeHtml(card.email)}</a>`) : ''}
-    ${card.bioHref ? p(`font-size: 13px;`, `<a href="${escapeHtml(card.bioHref)}" style="color: ${linkColor}; text-decoration: none; font-family: ${fontFamily};">Full bio</a>`) : ''}
-  `.trim()
+  const textBlock = [
+    card.name ? p(`font-weight: bold; color: #1a3a4a; font-family: ${fontFamily}; font-size: 14px;`, nameEsc) : '',
+    card.title ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.title)) : '',
+    card.location ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.location)) : '',
+    card.phone ? p(`font-family: ${fontFamily}; font-size: 13px; color: #374151;`, escapeHtml(card.phone)) : '',
+    card.email ? p(`font-size: 13px;`, `<a href="mailto:${escapeHtml(card.email)}" style="color: ${linkColor}; text-decoration: none; font-family: ${fontFamily};">${escapeHtml(card.email)}</a>`) : '',
+    card.bioHref ? p(`font-size: 13px;`, `<a href="${escapeHtml(card.bioHref)}" style="color: ${linkColor}; text-decoration: none; font-family: ${fontFamily};">Full bio</a>`) : '',
+  ].filter(Boolean).join('\n')
 
-  const photo = card.imageUrl
-    ? card.bioHref
-      ? `<a href="${escapeHtml(card.bioHref)}" style="display: block;"><img src="${card.imageUrl}" width="${photoWidth}" alt="${nameEsc}" style="display: block;" /></a>`
-      : `<img src="${card.imageUrl}" width="${photoWidth}" alt="${nameEsc}" style="display: block;" />`
-    : ''
-
-  if (layout === 'vertical') {
+  if (cardLayout === 'stacked') {
+    const photoSize = Math.min(100, Math.floor(cardWidth * 0.4))
+    const photo = card.imageUrl
+      ? card.bioHref
+        ? `<a href="${escapeHtml(card.bioHref)}" style="display: inline-block;"><img src="${card.imageUrl}" width="${photoSize}" height="${photoSize}" alt="${nameEsc}" style="display: block; object-fit: cover; width: ${photoSize}px; height: ${photoSize}px;" /></a>`
+        : `<img src="${card.imageUrl}" width="${photoSize}" height="${photoSize}" alt="${nameEsc}" style="display: block; object-fit: cover; width: ${photoSize}px; height: ${photoSize}px;" />`
+      : ''
     return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="table-layout: fixed; width: 100%;">
-      ${photo ? `<tr><td align="left" style="padding-bottom: 8px;">${photo}</td></tr>` : ''}
+      ${photo ? `<tr><td style="padding-bottom: 10px;">${photo}</td></tr>` : ''}
       <tr><td style="word-break: break-word; overflow-wrap: break-word;">${textBlock}</td></tr>
     </table>`
   }
 
-  const photoTdWidth = photoWidth + 12
+  // side-by-side
+  const photoSize = Math.min(80, Math.floor(cardWidth * 0.25))
+  const photoTdWidth = photoSize + 16
+  const photo = card.imageUrl
+    ? card.bioHref
+      ? `<a href="${escapeHtml(card.bioHref)}" style="display: block;"><img src="${card.imageUrl}" width="${photoSize}" height="${photoSize}" alt="${nameEsc}" style="display: block; object-fit: cover; width: ${photoSize}px; height: ${photoSize}px;" /></a>`
+      : `<img src="${card.imageUrl}" width="${photoSize}" height="${photoSize}" alt="${nameEsc}" style="display: block; object-fit: cover; width: ${photoSize}px; height: ${photoSize}px;" />`
+    : ''
   return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="table-layout: fixed; width: 100%;">
     <tr>
-      <td valign="top" width="${photoTdWidth}" style="padding-right: 12px; width: ${photoTdWidth}px;">${photo}</td>
+      ${photo ? `<td valign="top" width="${photoTdWidth}" style="padding-right: 16px; width: ${photoTdWidth}px;">${photo}</td>` : ''}
       <td valign="top" style="word-break: break-word; overflow-wrap: break-word;">${textBlock}</td>
     </tr>
   </table>`
 }
 
-function renderPeopleRows(cards: PersonCard[], fontFamily: string, layout: 'horizontal' | 'vertical', linkColor: string, contentWidth: number): string {
-  const perRow = layout === 'horizontal' ? 2 : 4
-  const pct = `${Math.floor(100 / perRow)}%`
-  // estimate cell content width for photo sizing: (contentWidth / perRow) minus 16px padding each side
-  const cellContentWidth = Math.floor(contentWidth / perRow) - 32
-  const photoWidth = Math.min(120, cellContentWidth)
-  const rows: string[] = []
-  for (let i = 0; i < cards.length; i += perRow) {
-    const chunk = cards.slice(i, i + perRow)
-    const cells = chunk.map((card) =>
-      `<td width="${pct}" valign="top" style="padding: 18px 16px; width: ${pct};">${renderPersonCard(card, fontFamily, layout, linkColor, photoWidth)}</td>`
-    ).join('')
-    const empties = perRow - chunk.length
-    const padding = empties > 0 ? `<td width="${pct}" valign="top" style="width: ${pct};"></td>`.repeat(empties) : ''
-    rows.push(`<tr>${cells}${padding}</tr>`)
+function renderPeopleCards(
+  cards: PersonCard[],
+  fontFamily: string,
+  cardLayout: 'side-by-side' | 'stacked',
+  groupLayout: 'side-by-side' | 'stacked',
+  linkColor: string,
+  maxWidth: number,
+  contentWidth: number,
+  bgStyle: string,
+  firstBorder = '',
+): string {
+  if (groupLayout === 'stacked' || cards.length === 1) {
+    return cards.map((card, i) => {
+      const border = i === 0 ? firstBorder : ''
+      const content = renderPersonCard(card, fontFamily, cardLayout, linkColor, contentWidth)
+      return `<tr><td style="padding: 18px 24px; ${border} ${bgStyle}">${content}</td></tr>`
+    }).join('\n')
   }
-  return rows.join('')
+
+  // Side-by-side: all cards in one row with N equal columns
+  const colCount = cards.length
+  const gap = 16
+  const colWidth = Math.floor((contentWidth - gap * (colCount - 1)) / colCount)
+  const cells = cards.map((card, i) => {
+    const pl = i === 0 ? 24 : gap / 2
+    const pr = i === colCount - 1 ? 24 : gap / 2
+    const content = renderPersonCard(card, fontFamily, cardLayout, linkColor, colWidth)
+    return `<td width="${colWidth}" valign="top" style="padding: 18px ${pr}px 18px ${pl}px; width: ${colWidth}px; ${bgStyle}">${content}</td>`
+  }).join('')
+  return `<tr><td style="padding: 0; ${firstBorder} ${bgStyle}"><table width="${maxWidth}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidth}px;"><tr>${cells}</tr></table></td></tr>`
 }
 
 function placeholderRow(label: string, borderStyle = 'border-top: 1px solid #e5e7eb;'): string {
@@ -257,10 +283,10 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
         const cardsBorder = sectionRows ? '' : sectionBorder
         if (ps.cards.length === 0 && isPreview) {
           const dummy: PersonCard = { id: '__placeholder__', name: 'Jane Smith', title: 'Senior Account Executive', location: 'New York, NY', phone: '+1 (212) 555-0182', email: 'jane.smith@example.com', bioHref: 'https://example.com/bio/jane-smith', imageUrl: 'https://placehold.co/120x120/e5e7eb/9ca3af?text=Photo' }
-          const dummyCellPx = Math.floor(maxWidthNum / 4)
-          sectionRows += `<tr><td style="padding: 0; ${cardsBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;"><tr><td width="${dummyCellPx}" valign="top" style="padding: 18px 16px; ${bgStyle}">${renderPersonCard(dummy, fontFamily, ps.peopleLayout, linkColor, Math.min(120, dummyCellPx - 32))}</td></tr></table></td></tr>\n`
+          const dummyContent = renderPersonCard(dummy, fontFamily, 'side-by-side', linkColor, contentWidth)
+          sectionRows += `<tr><td style="padding: 18px 24px; ${cardsBorder} ${bgStyle}">${dummyContent}</td></tr>\n`
         } else if (ps.cards.length > 0) {
-          sectionRows += `<tr><td style="padding: 0; ${cardsBorder} ${bgStyle}"><table width="${maxWidthNum}" cellpadding="0" cellspacing="0" border="0" style="table-layout: fixed; width: ${maxWidthNum}px;">${renderPeopleRows(ps.cards, fontFamily, ps.peopleLayout, linkColor, contentWidth)}</table></td></tr>\n`
+          sectionRows += renderPeopleCards(ps.cards, fontFamily, ps.cardLayout, ps.groupLayout, linkColor, maxWidthNum, contentWidth, bgStyle, cardsBorder)
         }
       } else {
         const cs = section as ColumnSection

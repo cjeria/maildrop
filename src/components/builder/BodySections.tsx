@@ -275,21 +275,42 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
 
   return (
     <div className="space-y-3">
+      {/* Person layout — how image + text are arranged within each card */}
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">Layout</span>
+        <span className="text-xs text-gray-500 w-28 shrink-0">Person layout</span>
         <div className="flex rounded border border-gray-400 overflow-hidden text-xs">
-          {(['horizontal', 'vertical'] as const).map((l, i) => (
+          {([['side-by-side', 'Side by side'], ['stacked', 'Stacked']] as const).map(([val, label], i) => (
             <button
-              key={l}
+              key={val}
               type="button"
-              onClick={() => store.setPeopleSectionLayout(section.id, l)}
-              className={`px-2.5 py-1 transition-colors capitalize ${i > 0 ? 'border-l border-gray-400' : ''} ${section.peopleLayout === l ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              onClick={() => store.setPeopleCardLayout(section.id, val)}
+              className={`px-2.5 py-1 transition-colors ${i > 0 ? 'border-l border-gray-400' : ''} ${section.cardLayout === val ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              {l}
+              {label}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Group layout — only shown when more than 1 person */}
+      {section.cards.length > 1 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 w-28 shrink-0">Group layout</span>
+          <div className="flex rounded border border-gray-400 overflow-hidden text-xs">
+            {([['side-by-side', 'Side by side'], ['stacked', 'Stacked']] as const).map(([val, label], i) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => store.setPeopleGroupLayout(section.id, val)}
+                className={`px-2.5 py-1 transition-colors ${i > 0 ? 'border-l border-gray-400' : ''} ${section.groupLayout === val ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={section.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
