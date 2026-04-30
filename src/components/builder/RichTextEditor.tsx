@@ -680,6 +680,7 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
       {cropSrc && (
         <ImageCropModal
           imageSrc={cropSrc}
+          originalFile={pendingFileRef.current ?? undefined}
           onDone={handleCropDone}
           onCancel={() => { setCropSrc(null); pendingFileRef.current = null }}
         />

@@ -25,23 +25,26 @@ async function getCroppedBlob(imageSrc: string, pixelCrop: Area): Promise<Blob> 
   canvas.width = pixelCrop.width
   canvas.height = pixelCrop.height
   const ctx = canvas.getContext('2d')!
+  // Leave canvas background transparent — preserves PNG alpha channels
   ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob)
       else reject(new Error('Canvas toBlob failed'))
-    }, 'image/jpeg', 0.92)
+    }, 'image/png')
   })
 }
 
 interface Props {
   imageSrc: string
+  /** Original File object — if provided, "Skip crop" uploads it unmodified */
+  originalFile?: File
   onDone: (url: string) => void
   onCancel: () => void
 }
 
-export function ImageCropModal({ imageSrc, onDone, onCancel }: Props) {
+export function ImageCropModal({ imageSrc, originalFile, onDone, onCancel }: Props) {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [aspectIndex, setAspectIndex] = useState(0)
@@ -59,9 +62,27 @@ export function ImageCropModal({ imageSrc, onDone, onCancel }: Props) {
     setError(null)
     try {
       const blob = await getCroppedBlob(imageSrc, croppedAreaPixels)
-      const file = new File([blob], 'cropped.jpg', { type: 'image/jpeg' })
+      const file = new File([blob], 'cropped.png', { type: 'image/png' })
       const url = await uploadToCloudinary(file)
       onDone(url)
+    } catch {
+      setError('Upload failed. Please try again.')
+      setUploading(false)
+    }
+  }
+
+  const handleSkip = async () => {
+    setUploading(true)
+    setError(null)
+    try {
+      if (originalFile) {
+        // Upload the untouched original file
+        const url = await uploadToCloudinary(originalFile)
+        onDone(url)
+      } else {
+        // Editing an existing image — just return the URL unchanged
+        onDone(imageSrc)
+      }
     } catch {
       setError('Upload failed. Please try again.')
       setUploading(false)
@@ -137,28 +158,38 @@ export function ImageCropModal({ imageSrc, onDone, onCancel }: Props) {
           {error && <p className="text-xs text-red-500">{error}</p>}
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex items-center justify-between pt-1">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleSkip}
               disabled={uploading}
-              className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50"
             >
-              Cancel
+              Skip crop
             </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={uploading}
-              className="px-4 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {uploading && (
-                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
-              )}
-              {uploading ? 'Uploading…' : 'Apply'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={uploading}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={uploading}
+                className="px-4 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {uploading && (
+                  <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                )}
+                {uploading ? 'Uploading…' : 'Apply crop'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

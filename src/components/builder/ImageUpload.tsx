@@ -11,9 +11,11 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [cropFile, setCropFile] = useState<File | undefined>(undefined)
 
   const openCrop = (file: File) => {
     if (!file.type.startsWith('image/')) return
+    setCropFile(file)
     const reader = new FileReader()
     reader.onload = () => setCropSrc(reader.result as string)
     reader.readAsDataURL(file)
@@ -28,6 +30,7 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
 
   const handleCropDone = (url: string) => {
     setCropSrc(null)
+    setCropFile(undefined)
     onChange(url)
   }
 
@@ -112,8 +115,9 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
       {cropSrc && (
         <ImageCropModal
           imageSrc={cropSrc}
+          originalFile={cropFile}
           onDone={handleCropDone}
-          onCancel={() => setCropSrc(null)}
+          onCancel={() => { setCropSrc(null); setCropFile(undefined) }}
         />
       )}
     </div>
