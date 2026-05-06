@@ -206,7 +206,15 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   // Applies the same rendering pipeline used for body content to any TipTap HTML
   const processTiptapHtml = (html: string, width: number, contextStyles = ''): string => {
     const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width), contextStyles)
-    return preserveSpaces(inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>'))
+    // Fill empty paragraphs before converting tags
+    const withEmpty = inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
+    // Convert <p> → <div>: Outlook's Word engine strips margin/padding inline styles from <p>
+    // on forward but leaves them on <div>. Even if stripped, bare <div> has no browser default
+    // margin (unlike <p> which gets ~1em top+bottom from user-agent stylesheets).
+    const divified = withEmpty
+      .replace(/<p(\s[^>]*)?>/gi, '<div$1>')
+      .replace(/<\/p>/gi, '</div>')
+    return preserveSpaces(divified)
   }
 
   // Per-section renderers — each receives whether it is the first visible row
@@ -413,8 +421,8 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(state.campaignName)}</title>
-  <style>p { margin: 0; padding: 0; line-height: 1.6; } a { color: ${linkColor}; }</style>
-  <!--[if mso]><style>p { margin: 0 !important; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }</style><![endif]-->
+  <style>p, div { margin: 0; padding: 0; line-height: 1.6; } a { color: ${linkColor}; }</style>
+  <!--[if mso]><style>p, div { margin: 0 !important; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }</style><![endif]-->
   <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: ${backgroundColor}; font-family: ${fontFamily};">
