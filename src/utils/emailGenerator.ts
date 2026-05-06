@@ -56,7 +56,7 @@ function escapeHtml(str: string): string {
 // contextStyles carries the per-site overrides (font-size, color, font-family)
 // that would otherwise only exist on a parent <div> or <td> that Word ignores.
 function inlineParagraphStyles(html: string, contextStyles = ''): string {
-  const pBase = 'margin: 0; padding: 0; line-height: 1.6;'
+  const pBase = 'margin: 0; padding: 0; line-height: 1.6; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0;'
   const pFull = contextStyles ? `${pBase} ${contextStyles}` : pBase
   const liFull = contextStyles ? `line-height: 1.6; ${contextStyles}` : ''
 
@@ -414,6 +414,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(state.campaignName)}</title>
   <style>p { margin: 0; padding: 0; line-height: 1.6; } a { color: ${linkColor}; }</style>
+  <!--[if mso]><style>p { margin: 0 !important; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }</style><![endif]-->
   <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: ${backgroundColor}; font-family: ${fontFamily};">
