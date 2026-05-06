@@ -426,6 +426,7 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: ${backgroundColor}; font-family: ${fontFamily};">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:transparent;">${escapeHtml(state.campaignName)}${'&nbsp;&zwnj;'.repeat(60)}</div>
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: ${backgroundColor};">
     <tr>
       <td align="center" style="padding: 30px 0;">
