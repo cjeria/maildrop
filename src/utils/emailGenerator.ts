@@ -199,9 +199,9 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
 
   const resolve = (html: string) => resolveVars(html, recipientName, link, selectedAddress)
 
-  // Returns true if an HTML string (possibly from TipTap) has visible text content
+  // Returns true if an HTML string (possibly from TipTap) has visible text or media content
   const hasVisibleContent = (html: string): boolean =>
-    html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim().length > 0
+    /<img[\s>]/i.test(html) || html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim().length > 0
 
   // Applies the same rendering pipeline used for body content to any TipTap HTML
   const processTiptapHtml = (html: string, width: number, contextStyles = ''): string => {
