@@ -429,8 +429,6 @@ function loadPersistedState(): Partial<PersistedState> {
 
 const initialState: PersistedState = { ...defaultState, ...loadPersistedState() }
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null
-
 function updateSection<T extends ContentSection>(
   sections: ContentSection[],
   id: string,

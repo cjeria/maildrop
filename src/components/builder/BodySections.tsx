@@ -166,12 +166,10 @@ function SortablePersonCard({
   sectionId,
   card,
   idx,
-  total,
 }: {
   sectionId: string
   card: PersonCard
   idx: number
-  total: number
 }) {
   const store = useCampaignStore()
   const [collapsed, setCollapsed] = useState(false)
@@ -321,7 +319,6 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
                 sectionId={section.id}
                 card={card}
                 idx={idx}
-                total={section.cards.length}
               />
             ))}
           </div>
