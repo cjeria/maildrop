@@ -55,8 +55,10 @@ function escapeHtml(str: string): string {
 // spacing survive when Outlook's Word engine converts the HTML on paste.
 // contextStyles carries the per-site overrides (font-size, color, font-family)
 // that would otherwise only exist on a parent <div> or <td> that Word ignores.
-function inlineParagraphStyles(html: string, contextStyles = ''): string {
-  const pBase = 'margin: 0; padding: 0; line-height: 1.6; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0;'
+function inlineParagraphStyles(html: string, contextStyles = '', forExport = false): string {
+  const pBase = forExport
+    ? 'margin: 0; padding: 0; font-size: 14px; line-height: 1.4; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0;'
+    : 'margin: 0; padding: 0; line-height: 1.6; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0;'
   const pFull = contextStyles ? `${pBase} ${contextStyles}` : pBase
   const liFull = contextStyles ? `line-height: 1.6; ${contextStyles}` : ''
 
@@ -205,13 +207,16 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
 
   // Applies the same rendering pipeline used for body content to any TipTap HTML
   const processTiptapHtml = (html: string, width: number, contextStyles = ''): string => {
-    const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width), contextStyles)
-    // Fill empty paragraphs before converting tags
-    const withEmpty = inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
+    const inlined = inlineParagraphStyles(processInlineImages(resolve(html), width), contextStyles, !isPreview)
+    // Export: replace empty paragraphs with a fixed-height spacer (12px).
+    // Preview: fill empty paragraphs so they take up visual space in the iframe.
+    const normalised = !isPreview
+      ? inlined.replace(/<p([^>]*)>\s*<\/p>/gi, '<p style="margin: 0; padding: 0; height: 12px; line-height: 12px; font-size: 1px;">&nbsp;</p>')
+      : inlined.replace(/<p([^>]*)><\/p>/gi, '<p$1>&nbsp;</p>')
     // Convert <p> → <div>: Outlook's Word engine strips margin/padding inline styles from <p>
     // on forward but leaves them on <div>. Even if stripped, bare <div> has no browser default
     // margin (unlike <p> which gets ~1em top+bottom from user-agent stylesheets).
-    const divified = withEmpty
+    const divified = normalised
       .replace(/<p(\s[^>]*)?>/gi, '<div$1>')
       .replace(/<\/p>/gi, '</div>')
     return preserveSpaces(divified)
@@ -421,8 +426,17 @@ export function generateEmailHtml(state: StoreState, options: { isPreview?: bool
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(state.campaignName)}</title>
-  <style>p, div { margin: 0; padding: 0; line-height: 1.6; } a { color: ${linkColor}; }</style>
-  <!--[if mso]><style>p, div { margin: 0 !important; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }</style><![endif]-->
+  <style type="text/css">
+    body { margin: 0; padding: 0; width: 100%; }
+    p { margin: 0; padding: 0; font-size: 14px; line-height: 1.4; }
+    div { margin: 0; padding: 0; }
+    table { border-collapse: collapse; }
+    td, th { margin: 0; padding: 0; }
+    a { color: ${linkColor}; }
+    * { mso-line-height-rule: exactly; }
+    p { mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }
+  </style>
+  <!--[if mso]><style type="text/css">p, div { margin: 0 !important; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; }</style><![endif]-->
   <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 </head>
 <body style="margin: 0; padding: 0; background-color: ${backgroundColor}; font-family: ${fontFamily};">

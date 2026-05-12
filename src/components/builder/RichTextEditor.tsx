@@ -229,8 +229,13 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
     const handle = () => {
       const { selection } = editor.state
       if (selection instanceof NodeSelection && selection.node.type.name === 'image') {
+        const isNewImage = imagePosRef.current !== selection.from
         imagePosRef.current = selection.from
-        setImageLinkHref(selection.node.attrs.href ?? '')
+        // Only initialise the href input when a different image is selected;
+        // never overwrite what the user is currently typing.
+        if (isNewImage) {
+          setImageLinkHref(selection.node.attrs.href ?? '')
+        }
         const dom = editor.view.nodeDOM(selection.from) as HTMLElement | null
         if (dom && containerRef.current) {
           const cRect = containerRef.current.getBoundingClientRect()
@@ -243,12 +248,21 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
       }
     }
     editor.on('selectionUpdate', handle)
-    editor.on('transaction', handle)
     return () => {
       editor.off('selectionUpdate', handle)
-      editor.off('transaction', handle)
     }
   }, [editor])
+
+  useEffect(() => {
+    if (!imageToolbar || !editor) return
+    const handleMouseDown = (e: MouseEvent) => {
+      if (containerRef.current?.contains(e.target as Node)) return
+      setImageToolbar(null)
+      imagePosRef.current = null
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [imageToolbar, editor])
 
   const applyImageLink = useCallback((href: string) => {
     if (!editor || imagePosRef.current === null) return
@@ -352,7 +366,7 @@ export function RichTextEditor({ content, onChange, font, onFontChange, fontSize
             zIndex: 50,
           }}
         >
-          <div className="flex items-center gap-1 bg-gray-900 text-white rounded-md px-2 py-1.5 shadow-lg">
+          <div className="flex items-center gap-1 bg-black/75 text-white rounded-md px-2 py-1.5 shadow-lg backdrop-blur-sm">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-gray-400">
               <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
