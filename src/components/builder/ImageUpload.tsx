@@ -37,13 +37,13 @@ export function ImageUpload({ imageUrl, onChange, label = 'image' }: Props) {
   return (
     <div className="space-y-2">
       {imageUrl ? (
-        <div className="relative group">
+        <div className="relative">
           <img
             src={imageUrl}
             alt="Uploaded"
             className="max-h-32 rounded border border-gray-300 object-contain"
           />
-          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+          <div className="absolute top-1 right-1 flex gap-1">
             <button
               type="button"
               onClick={() => setCropSrc(imageUrl)}

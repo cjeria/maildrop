@@ -343,7 +343,7 @@ function migrateSections(raw: unknown[]): ContentSection[] {
         type: 'people',
         backgroundColor: String(section.backgroundColor ?? '#ffffff'),
         cardLayout: 'side-by-side' as const,
-        groupLayout: 'side-by-side' as const,
+        groupLayout: 'stacked' as const,
         cards,
         richText: String(section.richText ?? ''),
       } as PeopleBodySection
@@ -494,7 +494,7 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
           type: 'people',
           backgroundColor: '#ffffff',
           cardLayout: 'side-by-side',
-          groupLayout: 'side-by-side',
+          groupLayout: 'stacked',
           cards: [],
           richText: '',
         }
@@ -550,7 +550,6 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
   addPersonCardToSection: (sectionId) =>
     set((state) => ({
       bodySections: updateSection<PeopleBodySection>(state.bodySections, sectionId, (s) => {
-        if (s.cards.length >= 4) return s
         return {
           ...s,
           cards: [...s.cards, {
@@ -563,7 +562,6 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
   duplicatePersonCardToSection: (sectionId, cardId) =>
     set((state) => ({
       bodySections: updateSection<PeopleBodySection>(state.bodySections, sectionId, (s) => {
-        if (s.cards.length >= 4) return s
         const source = s.cards.find((c) => c.id === cardId)
         if (!source) return s
         const copy: PersonCard = { ...source, id: nanoid() }
@@ -658,32 +656,44 @@ export const useCampaignStore = create<CampaignStore>((set) => ({
   loadState: (data) => set((state) => ({ ...state, ...data })),
 }))
 
+export function buildPersistedState(state: CampaignStore): PersistedState {
+  return {
+    campaignName: state.campaignName,
+    recipientName: state.recipientName,
+    link: state.link,
+    addresses: state.addresses,
+    selectedAddress: state.selectedAddress,
+    headerImage: state.headerImage,
+    headerSectionOrder: state.headerSectionOrder,
+    headerConfig: state.headerConfig,
+    body: state.body,
+    bodySections: state.bodySections,
+    footerConfig: state.footerConfig,
+    template: state.template,
+    font: state.font,
+    fontSize: state.fontSize,
+    cornerRadius: state.cornerRadius,
+    backgroundColor: state.backgroundColor,
+    cardColor: state.cardColor,
+    borderEnabled: state.borderEnabled,
+    borderColor: state.borderColor,
+    linkColor: state.linkColor,
+  }
+}
+
+function flushPersist() {
+  localStorage.setItem('maildrop_state', JSON.stringify(buildPersistedState(useCampaignStore.getState())))
+}
+
 // Debounced persistence
-useCampaignStore.subscribe((state) => {
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+useCampaignStore.subscribe(() => {
   if (persistTimer) clearTimeout(persistTimer)
-  persistTimer = setTimeout(() => {
-    const persisted: PersistedState = {
-      campaignName: state.campaignName,
-      recipientName: state.recipientName,
-      link: state.link,
-      addresses: state.addresses,
-      selectedAddress: state.selectedAddress,
-      headerImage: state.headerImage,
-      headerSectionOrder: state.headerSectionOrder,
-      headerConfig: state.headerConfig,
-      body: state.body,
-      bodySections: state.bodySections,
-      footerConfig: state.footerConfig,
-      template: state.template,
-      font: state.font,
-      fontSize: state.fontSize,
-      cornerRadius: state.cornerRadius,
-      backgroundColor: state.backgroundColor,
-      cardColor: state.cardColor,
-      borderEnabled: state.borderEnabled,
-      borderColor: state.borderColor,
-      linkColor: state.linkColor,
-    }
-    localStorage.setItem('maildrop_state', JSON.stringify(persisted))
-  }, 500)
+  persistTimer = setTimeout(flushPersist, 500)
+})
+
+// Flush immediately before the page unloads or Edge sleeps the tab
+window.addEventListener('beforeunload', flushPersist)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPersist()
 })

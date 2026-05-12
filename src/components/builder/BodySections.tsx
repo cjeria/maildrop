@@ -221,7 +221,7 @@ function SortablePersonCard({
           <button
             type="button"
             onClick={() => store.duplicatePersonCardToSection(sectionId, card.id)}
-            disabled={total >= 4}
+            disabled={false}
             className="text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             title="Duplicate"
           >
@@ -331,10 +331,9 @@ function PeopleBodySectionEditor({ section }: { section: PeopleBodySection }) {
       <button
         type="button"
         onClick={() => store.addPersonCardToSection(section.id)}
-        disabled={section.cards.length >= 4}
-        className="w-full text-xs py-1.5 border border-dashed border-gray-400 rounded-md text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full text-xs py-1.5 border border-dashed border-gray-400 rounded-md text-gray-500 hover:border-gray-500 hover:text-gray-700 transition-colors"
       >
-        + Add person {section.cards.length >= 4 ? '(max 4)' : ''}
+        + Add person
       </button>
     </div>
   )

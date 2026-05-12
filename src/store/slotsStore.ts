@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { PersistedState } from './campaignStore'
-import { useCampaignStore } from './campaignStore'
+import { useCampaignStore, buildPersistedState } from './campaignStore'
 
 export interface CampaignSlot {
   id: string
@@ -69,40 +69,18 @@ export const useSlotsStore = create<SlotsStore>((set, get) => ({
   getSlot: (id) => get().slots.find((s) => s.id === id),
 }))
 
-// Auto-sync active slot whenever campaign state changes (debounced)
+// Auto-sync active slot whenever campaign state changes.
+// In-memory update is immediate so loadState always reads current data;
+// only the localStorage write is debounced.
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 useCampaignStore.subscribe((campaign) => {
+  const { activeSlotId, slots } = useSlotsStore.getState()
+  if (!activeSlotId) return
+  const snapshot = buildPersistedState(campaign)
+  const updated = slots.map((s) =>
+    s.id === activeSlotId ? { ...s, state: snapshot } : s
+  )
+  useSlotsStore.setState({ slots: updated })
   if (syncTimer) clearTimeout(syncTimer)
-  syncTimer = setTimeout(() => {
-    const { activeSlotId, slots } = useSlotsStore.getState()
-    if (!activeSlotId) return
-    const updated = slots.map((s) =>
-      s.id === activeSlotId
-        ? { ...s, state: {
-            campaignName: campaign.campaignName,
-            recipientName: campaign.recipientName,
-            link: campaign.link,
-            addresses: campaign.addresses,
-            selectedAddress: campaign.selectedAddress,
-            headerImage: campaign.headerImage,
-            headerSectionOrder: campaign.headerSectionOrder,
-            headerConfig: campaign.headerConfig,
-            body: campaign.body,
-            bodySections: campaign.bodySections,
-            footerConfig: campaign.footerConfig,
-            template: campaign.template,
-            font: campaign.font,
-            fontSize: campaign.fontSize,
-            cornerRadius: campaign.cornerRadius,
-            backgroundColor: campaign.backgroundColor,
-            cardColor: campaign.cardColor,
-            borderEnabled: campaign.borderEnabled,
-            borderColor: campaign.borderColor,
-            linkColor: campaign.linkColor,
-          }}
-        : s
-    )
-    persist(updated)
-    useSlotsStore.setState({ slots: updated })
-  }, 600)
+  syncTimer = setTimeout(() => persist(useSlotsStore.getState().slots), 600)
 })
