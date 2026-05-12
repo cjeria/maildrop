@@ -109,7 +109,7 @@ function renderPersonCard(
 ): string {
   const nameEsc = escapeHtml(card.name)
   const p = (style: string, content: string) =>
-    `<p style="margin: 0; line-height: 1.4; word-break: break-word; overflow-wrap: break-word; ${style}">${content}</p>`
+    `<p style="margin: 0; padding: 0; font-size: 14px; line-height: 1.4; mso-margin-top-alt: 0; mso-margin-bottom-alt: 0; word-break: break-word; overflow-wrap: break-word; ${style}">${content}</p>`
 
   const textBlock = [
     card.name ? p(`font-weight: bold; color: #1a3a4a; font-family: ${fontFamily}; font-size: 14px;`, nameEsc) : '',
